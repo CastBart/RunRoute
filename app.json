@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "RunRoute",
-    "slug": "RunRoute",
+    "slug": "runroute",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,20 +10,54 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#007AFF"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.runroute.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "RunRoute needs access to your location to track your runs and plan routes.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "RunRoute needs access to your location to track your runs in the background.",
+        "NSLocationAlwaysUsageDescription": "RunRoute needs access to your location to track your runs in the background."
+      },
+      "config": {
+        "googleMapsApiKey": ""
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#007AFF"
       },
-      "edgeToEdgeEnabled": true
+      "package": "com.runroute.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": ""
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow RunRoute to use your location to track runs.",
+          "locationAlwaysPermission": "Allow RunRoute to track runs in the background.",
+          "locationWhenInUsePermission": "Allow RunRoute to use your location to track runs."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
     }
   }
 }
