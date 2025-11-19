@@ -21,7 +21,7 @@
         "NSLocationAlwaysUsageDescription": "RunRoute needs access to your location to track your runs in the background."
       },
       "config": {
-        "googleMapsApiKey": ""
+        "googleMapsApiKey": "AIzaSyAG_g0s7ft214QXWySuIYeI79hjkci114s"
       }
     },
     "android": {
@@ -37,7 +37,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": ""
+          "apiKey": "AIzaSyAG_g0s7ft214QXWySuIYeI79hjkci114s"
         }
       }
     },
