@@ -25,6 +25,8 @@ export const COLORS = {
   plannedRoute: '#007AFF',
   activeRoute: '#34C759',
   completedRoute: '#5856D6',
+  plannedRouteOverlay: '#007AFF', // Blue for planned route on tracking screen
+  liveTrailActive: '#34C759',      // Green for GPS trail
 };
 
 // Typography

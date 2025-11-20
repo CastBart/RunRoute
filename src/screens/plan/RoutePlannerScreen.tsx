@@ -11,13 +11,16 @@ import {
   ScrollView,
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, MAP_CONFIG } from '../../constants';
 import { getCurrentLocation } from '../../services/locationService';
 import { useRouteStore } from '../../store/routeStore';
+import { useTrackingStore } from '../../store/trackingStore';
 import { formatDistance, formatDuration } from '../../services/googleMapsService';
 import Button from '../../components/Button';
 
 const RoutePlannerScreen = () => {
+  const navigation = useNavigation();
   const mapRef = useRef<MapView>(null);
   const [mapReady, setMapReady] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(
@@ -119,6 +122,27 @@ const RoutePlannerScreen = () => {
   // Handle clear route
   const handleClearRoute = () => {
     clearRoute();
+  };
+
+  // Handle start run with this route
+  const handleStartRun = () => {
+    if (!currentRoute) {
+      Alert.alert('No Route', 'Please generate a route first.');
+      return;
+    }
+
+    // Set the planned route in tracking store
+    useTrackingStore.getState().setPlannedRoute(currentRoute);
+
+    // Navigate to tracking screen
+    navigation.navigate('Track' as never);
+
+    // Show user feedback
+    Alert.alert(
+      'Route Loaded',
+      'Your planned route is ready. Press "Start Run" to begin tracking.',
+      [{ text: 'OK' }]
+    );
   };
 
   // Center map on user location
@@ -309,12 +333,19 @@ const RoutePlannerScreen = () => {
               disabled={!startLocation || (!endLocation && !isLoop)}
             />
             {currentRoute && (
-              <Button
-                title="Clear Route"
-                onPress={handleClearRoute}
-                variant="outline"
-                style={styles.clearButton}
-              />
+              <>
+                <Button
+                  title="Start Run with This Route"
+                  onPress={handleStartRun}
+                  style={styles.startRunButton}
+                />
+                <Button
+                  title="Clear Route"
+                  onPress={handleClearRoute}
+                  variant="outline"
+                  style={styles.clearButton}
+                />
+              </>
             )}
           </View>
 
@@ -448,6 +479,9 @@ const styles = StyleSheet.create({
   },
   buttonGroup: {
     marginBottom: SPACING.md,
+  },
+  startRunButton: {
+    marginTop: SPACING.sm,
   },
   clearButton: {
     marginTop: SPACING.sm,
