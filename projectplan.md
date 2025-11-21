@@ -54,23 +54,16 @@
 
 ### ⚠️ Partially Implemented (Placeholder Screens Only)
 
-- ⬜ Run Tracking Screen (placeholder UI, no GPS tracking)
-- ⬜ Run History Screen (placeholder UI, no data)
 - ⬜ Social Feed Screen (placeholder UI, no posts)
 - ⬜ Profile Screen (placeholder UI, no profile data)
 
 ### ⬜ Not Yet Implemented
 
-- ⬜ Live GPS run tracking
-- ⬜ Run data persistence
-- ⬜ Run history and analytics
 - ⬜ Social features (posts, likes, comments)
 - ⬜ User profiles and settings
-- ⬜ Database schema setup in Supabase
-- ⬜ API endpoints beyond auth
 - ⬜ Image uploads
 - ⬜ Push notifications
-- ⬜ Background location tracking
+- ⬜ Background location tracking (requires device testing)
 
 ---
 
@@ -206,22 +199,26 @@
 
 ---
 
-### Phase 6: Run History & Analytics ⬜ TODO
+### Phase 6: Run History & Analytics ✅ COMPLETED (Core Features)
 
 **Priority:** MEDIUM - Important for user retention
 
 #### Tasks:
-- [ ] Replace placeholder RunHistoryScreen with data-driven list
-- [ ] Create run history API service
-- [ ] Implement infinite scroll/pagination
-- [ ] Build run list item component with summary
-- [ ] Create detailed run view screen
-- [ ] Display run route on map
-- [ ] Show run statistics (pace chart, elevation profile)
-- [ ] Implement run filtering (by date, distance)
-- [ ] Add search functionality
-- [ ] Create run edit/delete functionality
-- [ ] Build user statistics dashboard
+- [x] Replace placeholder RunHistoryScreen with data-driven list
+- [x] Create run history API service (getUserRuns, getRunById, deleteRun)
+- [x] Implement pull-to-refresh for run list
+- [x] Build run list item component with summary (RunListItem)
+- [x] Create detailed run view screen (RunDetailScreen)
+- [x] Display run route on map with start/finish markers
+- [x] Show run statistics (distance, duration, pace, speed, elevation, calories)
+- [x] Create run delete functionality with confirmation
+- [x] Add statistics header (total runs, distance, time)
+- [x] Create HistoryStackNavigator for nested navigation
+- [ ] Implement infinite scroll/pagination (future enhancement)
+- [ ] Implement run filtering (by date, distance) (future enhancement)
+- [ ] Add search functionality (future enhancement)
+- [ ] Create pace chart, elevation profile (future enhancement)
+- [ ] Build user statistics dashboard (future enhancement)
 - [ ] Create charts for:
   - [ ] Weekly/monthly distance
   - [ ] Pace trends over time
@@ -229,9 +226,16 @@
 - [ ] Add personal records tracking (fastest pace, longest run)
 - [ ] Implement data export (CSV/GPX format)
 
+**Files Created:**
+- `src/components/RunListItem.tsx` - Reusable run summary component
+- `src/screens/history/RunHistoryScreen.tsx` - Complete rewrite with FlatList
+- `src/screens/history/RunDetailScreen.tsx` - Full detail view with map
+- `src/navigation/HistoryStackNavigator.tsx` - Stack navigator for history tab
+
 **Reference Files:**
-- Current placeholder: `src/screens/history/RunHistoryScreen.tsx`
 - API spec: `spec/4. API Specification Document/runroute_api_specification.md`
+
+**Status:** Core functionality complete - list view, detail view, delete. Analytics features pending.
 
 ---
 
@@ -443,18 +447,21 @@ d:\Projects\RunRoute\
     ├── screens/                    # Screen components
     │   ├── auth/                   # ✅ Complete
     │   ├── plan/                   # ✅ Complete
-    │   ├── track/                  # ⬜ Placeholder
-    │   ├── history/                # ⬜ Placeholder
+    │   ├── track/                  # ✅ Complete
+    │   ├── history/                # ✅ Complete (core features)
     │   ├── social/                 # ⬜ Placeholder
     │   └── profile/                # ⬜ Placeholder
     ├── services/                   # API services
     │   ├── supabase.ts            # ✅ Complete
     │   ├── authService.ts         # ✅ Complete
     │   ├── locationService.ts     # ✅ Complete
-    │   └── googleMapsService.ts   # ✅ Complete
+    │   ├── googleMapsService.ts   # ✅ Complete
+    │   ├── runService.ts          # ✅ Complete
+    │   └── routeService.ts        # ✅ Complete
     ├── store/                      # State management (Zustand)
     │   ├── authStore.ts           # ✅ Complete
-    │   └── routeStore.ts          # ✅ Complete
+    │   ├── routeStore.ts          # ✅ Complete
+    │   └── trackingStore.ts       # ✅ Complete
     └── types/                      # TypeScript definitions
         └── index.ts               # ✅ Complete
 ```
@@ -591,9 +598,10 @@ Detailed summaries for each completed phase can be found in the `phases/` direct
 - [Phase 3: Route Planning](phases/Phase3.md)
 - [Phase 4: Database Schema Setup](phases/Phase4.md)
 - [Phase 5: Live Run Tracking](phases/Phase5.md)
+- [Phase 6: Run History & Analytics](phases/Phase6.md)
 
 ---
 
-**Last Updated:** 2025-11-20
-**Version:** 1.1
-**Status:** Phase 5 Complete - Ready for Run History Implementation
+**Last Updated:** 2025-11-21
+**Version:** 1.2
+**Status:** Phase 6 Complete - Ready for Social Features Implementation

@@ -12,6 +12,7 @@ import * as Location from 'expo-location';
 import { COLORS, SPACING } from '../../constants';
 import { useTrackingStore, GPSPoint } from '../../store/trackingStore';
 import { runService } from '../../services/runService';
+import { routeService } from '../../services/routeService';
 import Button from '../../components/Button';
 
 const RunTrackerScreen = () => {
@@ -24,6 +25,8 @@ const RunTrackerScreen = () => {
     targetDistanceMeters,
     gpsStatus,
     plannedRoute,
+    plannedRouteId,
+    startedAt,
     startTracking,
     pauseTracking,
     resumeTracking,
@@ -117,6 +120,7 @@ const RunTrackerScreen = () => {
   };
 
   const handleStopRun = () => {
+    
     Alert.alert(
       'Stop Run?',
       'Are you sure you want to stop tracking this run?',
@@ -152,22 +156,33 @@ const RunTrackerScreen = () => {
 
     setSaving(true);
     try {
-      const polyline = runService.encodePolyline(gpsTrail);
+      // Step 1: Save the planned route first (if it exists and hasn't been saved yet)
+      let finalRouteId: string | null = plannedRouteId;
 
+      if (plannedRoute && routeService.isTemporaryRouteId(plannedRouteId)) {
+        console.log('Saving planned route to database first...');
+        const savedRoute = await routeService.saveRoute(plannedRoute);
+        finalRouteId = savedRoute.id;
+        console.log('Route saved with UUID:', finalRouteId);
+      }
+
+      // Step 2: Calculate average speed (km/h) from distance and duration
+      const distanceKm = metrics.distanceMeters / 1000;
+      const durationHours = metrics.durationSeconds / 3600;
+      const averageSpeed = durationHours > 0 ? distanceKm / durationHours : 0;
+
+      // Step 3: Save the run with the route UUID
       await runService.saveRun({
-        title: `Run - ${new Date().toLocaleDateString()}`,
-        distanceMeters: metrics.distanceMeters,
-        durationSeconds: metrics.durationSeconds,
-        averagePaceSecondsPerKm: metrics.averagePaceSecondsPerKm,
-        startLatitude: gpsTrail[0].latitude,
-        startLongitude: gpsTrail[0].longitude,
-        endLatitude: gpsTrail[gpsTrail.length - 1].latitude,
-        endLongitude: gpsTrail[gpsTrail.length - 1].longitude,
-        routePolyline: polyline,
-        waypoints: gpsTrail,
-        elevationGainMeters: metrics.elevationGainMeters,
-        startedAt: new Date(gpsTrail[0].timestamp).toISOString(),
-        completedAt: new Date().toISOString(),
+        routeId: finalRouteId || undefined,
+        startTime: new Date(startedAt || gpsTrail[0].timestamp).toISOString(),
+        endTime: new Date().toISOString(),
+        duration: metrics.durationSeconds,
+        distance: distanceKm,
+        averagePace: metrics.averagePaceSecondsPerKm,
+        averageSpeed: averageSpeed,
+        polyline: gpsTrail,
+        elevationGain: metrics.elevationGainMeters,
+        caloriesBurned: metrics.calories,
       });
 
       Alert.alert('Success!', 'Your run has been saved.', [

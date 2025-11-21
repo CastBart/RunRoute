@@ -3,12 +3,14 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from '../types';
 import { COLORS } from '../constants';
 
-// Placeholder screens - will be created later
+// Screen imports
 import RoutePlannerScreen from '../screens/plan/RoutePlannerScreen';
 import RunTrackerScreen from '../screens/track/RunTrackerScreen';
-import RunHistoryScreen from '../screens/history/RunHistoryScreen';
 import SocialFeedScreen from '../screens/social/SocialFeedScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+
+// Stack navigators for tabs with nested screens
+import HistoryStackNavigator from './HistoryStackNavigator';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -44,10 +46,11 @@ const MainTabNavigator = () => {
       />
       <Tab.Screen
         name="History"
-        component={RunHistoryScreen}
+        component={HistoryStackNavigator}
         options={{
           title: 'Run History',
           tabBarLabel: 'History',
+          headerShown: false, // Stack navigator handles its own headers
         }}
       />
       <Tab.Screen

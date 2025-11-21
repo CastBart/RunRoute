@@ -2,21 +2,16 @@ import { supabase } from './supabase';
 import { GPSPoint, TrackingMetrics } from '../store/trackingStore';
 
 export interface SaveRunParams {
-  title?: string;
-  notes?: string;
-  plannedRouteId?: string;
-  distanceMeters: number;
-  durationSeconds: number;
-  averagePaceSecondsPerKm: number;
-  startLatitude: number;
-  startLongitude: number;
-  endLatitude: number;
-  endLongitude: number;
-  routePolyline: string;
-  waypoints: GPSPoint[];
-  elevationGainMeters: number;
-  startedAt: string;
-  completedAt: string;
+  routeId?: string;
+  startTime: string;
+  endTime: string;
+  duration: number; // seconds
+  distance: number; // kilometers
+  averagePace: number; // seconds per km
+  averageSpeed: number; // km/h
+  polyline: GPSPoint[]; // GPS trail coordinates
+  elevationGain?: number; // meters
+  caloriesBurned?: number;
 }
 
 export interface Run extends SaveRunParams {
@@ -38,26 +33,31 @@ class RunService {
       throw new Error('User not authenticated');
     }
 
+    // Convert GPSPoint[] to JSONB format for database
+    const polylineJson = runData.polyline.map((point) => ({
+      latitude: point.latitude,
+      longitude: point.longitude,
+      altitude: point.altitude,
+      accuracy: point.accuracy,
+      speed: point.speed,
+      timestamp: point.timestamp,
+    }));
+
     const { data, error } = await supabase
       .from('runs')
       .insert([
         {
           user_id: user.id,
-          title: runData.title || 'Run',
-          notes: runData.notes,
-          planned_route_id: runData.plannedRouteId,
-          distance_meters: runData.distanceMeters,
-          duration_seconds: runData.durationSeconds,
-          average_pace_seconds_per_km: runData.averagePaceSecondsPerKm,
-          start_latitude: runData.startLatitude,
-          start_longitude: runData.startLongitude,
-          end_latitude: runData.endLatitude,
-          end_longitude: runData.endLongitude,
-          route_polyline: runData.routePolyline,
-          waypoints: runData.waypoints,
-          elevation_gain_meters: runData.elevationGainMeters,
-          started_at: runData.startedAt,
-          completed_at: runData.completedAt,
+          route_id: runData.routeId || null,
+          start_time: runData.startTime,
+          end_time: runData.endTime,
+          duration: runData.duration,
+          distance: runData.distance,
+          average_pace: runData.averagePace,
+          average_speed: runData.averageSpeed,
+          polyline: polylineJson,
+          elevation_gain: runData.elevationGain || null,
+          calories_burned: runData.caloriesBurned || null,
         },
       ])
       .select()
@@ -87,7 +87,7 @@ class RunService {
       .from('runs')
       .select('*')
       .eq('user_id', user.id)
-      .order('started_at', { ascending: false })
+      .order('start_time', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (error) {
@@ -145,35 +145,6 @@ class RunService {
       console.error('Error deleting run:', error);
       throw error;
     }
-  }
-
-  /**
-   * Encode GPS waypoints into a polyline string
-   * Simplified version - in production, use a proper polyline encoding library
-   */
-  encodePolyline(waypoints: GPSPoint[]): string {
-    return JSON.stringify(
-      waypoints.map((wp) => ({
-        lat: wp.latitude,
-        lng: wp.longitude,
-        alt: wp.altitude,
-        timestamp: wp.timestamp,
-      }))
-    );
-  }
-
-  /**
-   * Decode polyline string back to GPS waypoints
-   */
-  decodePolyline(polyline: string): GPSPoint[] {
-    const decoded = JSON.parse(polyline);
-    return decoded.map((point: any) => ({
-      latitude: point.lat,
-      longitude: point.lng,
-      altitude: point.alt,
-      accuracy: 0,
-      timestamp: point.timestamp,
-    }));
   }
 }
 
