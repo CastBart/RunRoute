@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,11 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../../constants';
 import { runService } from '../../services/runService';
 import RunListItem from '../../components/RunListItem';
@@ -31,6 +33,19 @@ const RunHistoryScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => navigation.navigate('Analytics')}
+        >
+          <Ionicons name="stats-chart" size={24} color={COLORS.primary} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   const fetchRuns = useCallback(async () => {
     try {
@@ -159,6 +174,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.backgroundSecondary,
+  },
+  headerButton: {
+    marginRight: SPACING.md,
+    padding: SPACING.xs,
   },
   centerContainer: {
     flex: 1,

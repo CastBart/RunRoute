@@ -5,6 +5,8 @@ import { COLORS } from '../constants';
 
 import RunHistoryScreen from '../screens/history/RunHistoryScreen';
 import RunDetailScreen from '../screens/history/RunDetailScreen';
+import AnalyticsScreen from '../screens/history/AnalyticsScreen';
+import RunComparisonScreen from '../screens/history/RunComparisonScreen';
 
 const Stack = createStackNavigator<HistoryStackParamList>();
 
@@ -33,6 +35,22 @@ const HistoryStackNavigator = () => {
         component={RunDetailScreen}
         options={{
           title: 'Run Details',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen
+        name="Analytics"
+        component={AnalyticsScreen}
+        options={{
+          title: 'Analytics',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen
+        name="RunComparison"
+        component={RunComparisonScreen}
+        options={{
+          title: 'Compare Runs',
           headerBackTitle: 'Back',
         }}
       />

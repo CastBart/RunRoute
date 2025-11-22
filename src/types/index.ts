@@ -149,6 +149,8 @@ export type RoutesStackParamList = {
 export type HistoryStackParamList = {
   RunHistory: undefined;
   RunDetail: { runId: string };
+  Analytics: undefined;
+  RunComparison: { runIds: string[] };
 };
 
 export type SocialStackParamList = {

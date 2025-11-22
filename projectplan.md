@@ -199,7 +199,7 @@
 
 ---
 
-### Phase 6: Run History & Analytics ✅ COMPLETED (Core Features)
+### Phase 6: Run History & Analytics ✅ COMPLETED
 
 **Priority:** MEDIUM - Important for user retention
 
@@ -214,28 +214,33 @@
 - [x] Create run delete functionality with confirmation
 - [x] Add statistics header (total runs, distance, time)
 - [x] Create HistoryStackNavigator for nested navigation
+- [x] Build user statistics dashboard (AnalyticsScreen)
+- [x] Create weekly/monthly analytics with toggle
+- [x] Add weekly breakdown bar chart (month view)
+- [x] Add personal records tracking (fastest pace, longest run, longest duration)
+- [x] Display lifetime stats (total runs, total distance)
+- [x] Create run comparison feature (RunComparisonScreen)
+- [x] Implement data export (GPX format with GPS trail)
+- [x] Implement data export (CSV format with summary)
+- [x] Add share to social feed from run detail
 - [ ] Implement infinite scroll/pagination (future enhancement)
 - [ ] Implement run filtering (by date, distance) (future enhancement)
 - [ ] Add search functionality (future enhancement)
 - [ ] Create pace chart, elevation profile (future enhancement)
-- [ ] Build user statistics dashboard (future enhancement)
-- [ ] Create charts for:
-  - [ ] Weekly/monthly distance
-  - [ ] Pace trends over time
-  - [ ] Elevation totals
-- [ ] Add personal records tracking (fastest pace, longest run)
-- [ ] Implement data export (CSV/GPX format)
+- [ ] Add pace trends over time chart (future enhancement)
 
 **Files Created:**
 - `src/components/RunListItem.tsx` - Reusable run summary component
 - `src/screens/history/RunHistoryScreen.tsx` - Complete rewrite with FlatList
-- `src/screens/history/RunDetailScreen.tsx` - Full detail view with map
+- `src/screens/history/RunDetailScreen.tsx` - Full detail view with map, export, share, compare
+- `src/screens/history/AnalyticsScreen.tsx` - Analytics dashboard with week/month toggle
+- `src/screens/history/RunComparisonScreen.tsx` - Side-by-side run comparison
 - `src/navigation/HistoryStackNavigator.tsx` - Stack navigator for history tab
 
 **Reference Files:**
 - API spec: `spec/4. API Specification Document/runroute_api_specification.md`
 
-**Status:** Core functionality complete - list view, detail view, delete. Analytics features pending.
+**Status:** Complete - All core and analytics features implemented including export (GPX/CSV), run comparison, and share to social.
 
 ---
 
@@ -718,5 +723,5 @@ Detailed summaries for each completed phase can be found in the `phases/` direct
 ---
 
 **Last Updated:** 2025-11-22
-**Version:** 1.6
-**Status:** Phase 9B Complete - UX Review & Visual Polish Implemented!
+**Version:** 1.7
+**Status:** Phase 6 Analytics Complete - Weekly/Monthly Analytics, Run Comparison, Export (GPX/CSV), Share to Social!

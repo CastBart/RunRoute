@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
   },
   errorText: {
-    color: COLORS.error,
+    color: COLORS.danger,
     fontSize: 16,
     textAlign: 'center',
     marginBottom: SPACING.md,

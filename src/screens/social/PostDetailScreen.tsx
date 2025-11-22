@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
   },
   errorText: {
-    color: COLORS.error,
+    color: COLORS.danger,
     fontSize: 16,
     textAlign: 'center',
     marginBottom: SPACING.md,
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     marginRight: SPACING.sm,
   },
   liked: {
-    color: COLORS.error,
+    color: COLORS.danger,
   },
   likeCount: {
     fontSize: 14,

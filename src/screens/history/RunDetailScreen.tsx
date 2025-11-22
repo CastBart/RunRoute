@@ -7,15 +7,22 @@ import {
   ActivityIndicator,
   Alert,
   TouchableOpacity,
+  Modal,
+  FlatList,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import MapView, { Polyline, Marker } from 'react-native-maps';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../../constants';
-import { runService } from '../../services/runService';
+import { runService, Run } from '../../services/runService';
+import { socialService } from '../../services/socialService';
+import { HistoryStackParamList } from '../../types';
 
-type RouteParams = {
-  RunDetail: { runId: string };
-};
+type DetailNavigationProp = StackNavigationProp<HistoryStackParamList, 'RunDetail'>;
 
 interface RunDetail {
   id: string;
@@ -32,17 +39,117 @@ interface RunDetail {
 }
 
 const RunDetailScreen = () => {
-  const route = useRoute<RouteProp<RouteParams, 'RunDetail'>>();
-  const navigation = useNavigation();
+  const route = useRoute<RouteProp<HistoryStackParamList, 'RunDetail'>>();
+  const navigation = useNavigation<DetailNavigationProp>();
   const { runId } = route.params;
 
   const [run, setRun] = useState<RunDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [otherRuns, setOtherRuns] = useState<Run[]>([]);
+  const [loadingRuns, setLoadingRuns] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareCaption, setShareCaption] = useState('');
+  const [sharing, setSharing] = useState(false);
+  const [isAlreadyShared, setIsAlreadyShared] = useState(false);
 
   useEffect(() => {
     fetchRunDetails();
+    checkIfShared();
   }, [runId]);
+
+  const checkIfShared = async () => {
+    try {
+      const shared = await socialService.hasRunBeenPosted(runId);
+      setIsAlreadyShared(shared);
+    } catch (err) {
+      console.error('Error checking share status:', err);
+    }
+  };
+
+  const handleShare = () => {
+    if (isAlreadyShared) {
+      Alert.alert('Already Shared', 'This run has already been shared to your feed.');
+      return;
+    }
+    setShowShareModal(true);
+  };
+
+  const handleConfirmShare = async () => {
+    if (!run) return;
+    setSharing(true);
+    try {
+      await socialService.createPost({
+        runId: runId,
+        caption: shareCaption.trim() || undefined,
+      });
+      setShowShareModal(false);
+      setShareCaption('');
+      setIsAlreadyShared(true);
+      Alert.alert('Success', 'Your run has been shared to your feed!');
+    } catch (err) {
+      console.error('Error sharing run:', err);
+      Alert.alert('Error', 'Failed to share run');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleCompare = async () => {
+    setLoadingRuns(true);
+    setShowCompareModal(true);
+    try {
+      const runs = await runService.getUserRuns(50, 0);
+      // Filter out the current run
+      setOtherRuns(runs.filter((r) => r.id !== runId));
+    } catch (err) {
+      console.error('Error fetching runs:', err);
+    } finally {
+      setLoadingRuns(false);
+    }
+  };
+
+  const selectRunForComparison = (otherRunId: string) => {
+    setShowCompareModal(false);
+    navigation.navigate('RunComparison', { runIds: [runId, otherRunId] });
+  };
+
+  const handleExport = () => {
+    Alert.alert(
+      'Export Run',
+      'Choose export format',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'GPX',
+          onPress: async () => {
+            try {
+              if (!run) return;
+              const filePath = await runService.exportToGPX(run as any);
+              await runService.shareFile(filePath);
+            } catch (err) {
+              console.error('Error exporting GPX:', err);
+              Alert.alert('Error', 'Failed to export as GPX');
+            }
+          },
+        },
+        {
+          text: 'CSV',
+          onPress: async () => {
+            try {
+              if (!run) return;
+              const filePath = await runService.exportToCSV(run as any);
+              await runService.shareFile(filePath);
+            } catch (err) {
+              console.error('Error exporting CSV:', err);
+              Alert.alert('Error', 'Failed to export as CSV');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const fetchRunDetails = async () => {
     try {
@@ -248,16 +355,147 @@ const RunDetailScreen = () => {
         )}
       </View>
 
-      {/* Delete Button */}
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={handleDelete}
-        disabled={deleting}
+      {/* Action Buttons */}
+      <View style={styles.actionButtonsContainer}>
+        <TouchableOpacity
+          style={[styles.actionButton, isAlreadyShared && styles.actionButtonDisabled]}
+          onPress={handleShare}
+        >
+          <Ionicons
+            name={isAlreadyShared ? 'checkmark-circle' : 'share-social-outline'}
+            size={20}
+            color={isAlreadyShared ? COLORS.success : COLORS.primary}
+          />
+          <Text style={[styles.actionButtonText, isAlreadyShared && styles.actionButtonTextDisabled]}>
+            {isAlreadyShared ? 'Shared' : 'Share'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleCompare}
+        >
+          <Ionicons name="git-compare-outline" size={20} color={COLORS.primary} />
+          <Text style={styles.actionButtonText}>Compare</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleExport}
+        >
+          <Ionicons name="download-outline" size={20} color={COLORS.primary} />
+          <Text style={styles.actionButtonText}>Export</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={handleDelete}
+          disabled={deleting}
+        >
+          <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.deleteButtonText}>
+            {deleting ? '...' : 'Delete'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Compare Modal */}
+      <Modal
+        visible={showCompareModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCompareModal(false)}
       >
-        <Text style={styles.deleteButtonText}>
-          {deleting ? 'Deleting...' : 'Delete Run'}
-        </Text>
-      </TouchableOpacity>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select a run to compare</Text>
+              <TouchableOpacity onPress={() => setShowCompareModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingRuns ? (
+              <ActivityIndicator size="large" color={COLORS.primary} style={styles.modalLoader} />
+            ) : otherRuns.length === 0 ? (
+              <Text style={styles.noRunsText}>No other runs to compare with</Text>
+            ) : (
+              <FlatList
+                data={otherRuns}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.runItem}
+                    onPress={() => selectRunForComparison(item.id)}
+                  >
+                    <View>
+                      <Text style={styles.runItemDate}>
+                        {new Date(item.start_time).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </Text>
+                      <Text style={styles.runItemStats}>
+                        {item.distance.toFixed(2)} km • {formatDuration(item.duration)}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Share Modal */}
+      <Modal
+        visible={showShareModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowShareModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.shareModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Share to Feed</Text>
+              <TouchableOpacity onPress={() => setShowShareModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.sharePreview}>
+              <Text style={styles.sharePreviewText}>
+                {run?.distance.toFixed(2)} km • {formatDuration(run?.duration || 0)}
+              </Text>
+            </View>
+
+            <TextInput
+              style={styles.captionInput}
+              placeholder="Add a caption (optional)"
+              placeholderTextColor={COLORS.textSecondary}
+              value={shareCaption}
+              onChangeText={setShareCaption}
+              multiline
+              maxLength={280}
+            />
+
+            <TouchableOpacity
+              style={[styles.shareButton, sharing && styles.shareButtonDisabled]}
+              onPress={handleConfirmShare}
+              disabled={sharing}
+            >
+              <Text style={styles.shareButtonText}>
+                {sharing ? 'Sharing...' : 'Share Run'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <View style={styles.bottomSpacer} />
     </ScrollView>
@@ -355,15 +593,144 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
   },
-  deleteButton: {
-    backgroundColor: COLORS.danger,
+  actionButtonsContainer: {
+    flexDirection: 'row',
     marginHorizontal: SPACING.md,
     marginTop: SPACING.md,
-    padding: SPACING.md,
+    gap: SPACING.xs,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'column',
+    backgroundColor: COLORS.background,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  actionButtonText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  actionButtonDisabled: {
+    borderColor: COLORS.success,
+    backgroundColor: COLORS.backgroundSecondary,
+  },
+  actionButtonTextDisabled: {
+    color: COLORS.success,
+  },
+  deleteButton: {
+    flex: 1,
+    flexDirection: 'column',
+    backgroundColor: COLORS.danger,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
   deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+    paddingBottom: SPACING.xxl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  modalLoader: {
+    padding: SPACING.xl,
+  },
+  noRunsText: {
+    textAlign: 'center',
+    color: COLORS.textSecondary,
+    padding: SPACING.xl,
+    fontSize: 16,
+  },
+  runItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  runItemDate: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  runItemStats: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+  },
+  shareModalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: SPACING.md,
+    paddingBottom: SPACING.xxl,
+  },
+  sharePreview: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: 12,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    alignItems: 'center',
+  },
+  sharePreviewText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  captionInput: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: 12,
+    padding: SPACING.md,
+    fontSize: 16,
+    color: COLORS.text,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: SPACING.md,
+  },
+  shareButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    padding: SPACING.md,
+    alignItems: 'center',
+  },
+  shareButtonDisabled: {
+    opacity: 0.6,
+  },
+  shareButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   },
   deleteText: {
     fontSize: 16,
-    color: COLORS.error,
+    color: COLORS.danger,
   },
   bottomPadding: {
     height: SPACING.xl,

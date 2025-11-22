@@ -1,8 +1,16 @@
 import { supabase } from './supabase';
-import { RunPost, Comment, Like } from '../types';
 
-// Types for API responses
-export interface PostWithDetails extends RunPost {
+// Types for API responses (not extending base types to avoid user property conflicts)
+export interface PostWithDetails {
+  id: string;
+  user_id: string;
+  run_id: string;
+  caption?: string;
+  image_url?: string;
+  likes_count: number;
+  comments_count: number;
+  created_at: string;
+  updated_at: string;
   user: {
     id: string;
     name: string;
@@ -19,7 +27,12 @@ export interface PostWithDetails extends RunPost {
   liked_by_current_user: boolean;
 }
 
-export interface CommentWithUser extends Comment {
+export interface CommentWithUser {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
   user: {
     id: string;
     name: string;
@@ -183,7 +196,7 @@ class SocialService {
   /**
    * Create a new post for a run
    */
-  async createPost(params: CreatePostParams): Promise<RunPost> {
+  async createPost(params: CreatePostParams): Promise<PostWithDetails> {
     const { data: session } = await supabase.auth.getSession();
     if (!session?.session?.user?.id) {
       throw new Error('User not authenticated');

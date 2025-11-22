@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   liked: {
-    color: COLORS.error,
+    color: COLORS.danger,
   },
 });
 

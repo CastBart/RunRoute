@@ -90,10 +90,43 @@ deleteRun(runId: string): Promise<void>
 - `formatDate(isoString)`: Human-readable date
 - `formatTime(isoString)`: Time of day
 
-## Future Enhancements (Phase 7+)
-- [ ] Weekly/monthly run analytics
-- [ ] Progress charts and graphs
-- [ ] Personal records tracking
-- [ ] Run comparison feature
-- [ ] Export run data (GPX, CSV)
-- [ ] Share run to social feed
+## Completed Enhancements
+
+### 5. Analytics Screen (AnalyticsScreen)
+- **Weekly/Monthly Analytics**: Toggle between week and month views
+- **Summary Stats**: Total runs, distance, duration, average pace
+- **Weekly Breakdown Chart**: Bar chart showing distance per week (month view)
+- **This Week's Runs**: List of runs with quick navigation (week view)
+- **Personal Records**: Longest run, fastest pace, longest duration with navigation to run details
+- **Lifetime Stats**: Total runs and total distance
+
+### 6. Run Comparison (RunComparisonScreen)
+- **Side-by-side comparison**: Compare two runs visually
+- **Metrics compared**: Distance, duration, average pace, average speed
+- **Visual indicators**: Up/down arrows showing which run performed better
+- **Difference display**: Shows exact difference between metrics
+- **Summary**: Text summary of key differences
+
+### 7. Export Functionality
+- **GPX Export**: Standard GPS exchange format for fitness apps
+- **CSV Export**: Spreadsheet-friendly format with GPS points and summary
+- **Share Integration**: Uses device sharing capabilities
+
+### 8. Share to Social Feed
+- **Direct Sharing**: Share run from Run Detail screen to social feed
+- **Caption Support**: Optional caption for the post
+- **Already Shared Indicator**: Shows if run has already been shared
+- **Prevention of Duplicates**: Cannot share the same run twice
+
+## File Changes
+
+### New Files
+- `src/screens/history/AnalyticsScreen.tsx` - Analytics dashboard
+- `src/screens/history/RunComparisonScreen.tsx` - Run comparison view
+
+### Modified Files
+- `src/services/runService.ts` - Added analytics and export methods
+- `src/screens/history/RunDetailScreen.tsx` - Added Compare, Export, Share buttons
+- `src/navigation/HistoryStackNavigator.tsx` - Added Analytics and RunComparison screens
+- `src/screens/history/RunHistoryScreen.tsx` - Added Analytics button in header
+- `src/types/index.ts` - Added Analytics and RunComparison to navigation types
