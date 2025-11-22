@@ -146,6 +146,7 @@ export type SocialStackParamList = {
   Feed: undefined;
   PostDetail: { postId: string };
   UserProfile: { userId: string };
+  CreatePost: undefined;
 };
 
 export type ProfileStackParamList = {

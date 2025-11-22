@@ -54,16 +54,15 @@
 
 ### ⚠️ Partially Implemented (Placeholder Screens Only)
 
-- ⬜ Social Feed Screen (placeholder UI, no posts)
 - ⬜ Profile Screen (placeholder UI, no profile data)
 
 ### ⬜ Not Yet Implemented
 
-- ⬜ Social features (posts, likes, comments)
 - ⬜ User profiles and settings
 - ⬜ Image uploads
 - ⬜ Push notifications
 - ⬜ Background location tracking (requires device testing)
+- ⬜ User connections (follow/unfollow)
 
 ---
 
@@ -239,48 +238,58 @@
 
 ---
 
-### Phase 7: Social Features ⬜ TODO
+### Phase 7: Social Features ✅ COMPLETED (Core Features)
 
 **Priority:** MEDIUM - Differentiator feature
 
 #### Sub-Phase 7.1: Social Feed
-- [ ] Replace placeholder SocialFeedScreen
-- [ ] Create social feed API service
-- [ ] Implement post list with infinite scroll
-- [ ] Build run post card component
-- [ ] Display run map thumbnail
-- [ ] Show run statistics on posts
-- [ ] Add pull-to-refresh
-- [ ] Implement real-time updates (Supabase Realtime)
-- [ ] Add loading states and skeletons
+- [x] Replace placeholder SocialFeedScreen
+- [x] Create social feed API service (socialService.ts)
+- [x] Build run post card component (PostCard.tsx)
+- [x] Display run map thumbnail with polyline
+- [x] Show run statistics on posts (distance, duration, pace)
+- [x] Add pull-to-refresh
+- [x] Add loading states and empty states
+- [ ] Implement infinite scroll/pagination (future enhancement)
+- [ ] Implement real-time updates (Supabase Realtime) (future enhancement)
 
 #### Sub-Phase 7.2: Post Interactions
-- [ ] Implement like/unlike functionality
-- [ ] Add optimistic UI updates for likes
-- [ ] Create comment system
-- [ ] Build comment input component
-- [ ] Show comment list with nested replies
-- [ ] Add post sharing (native share)
-- [ ] Implement double-tap to like
+- [x] Implement like/unlike functionality
+- [x] Add optimistic UI updates for likes
+- [x] Create comment system
+- [x] Build comment input component
+- [x] Show comment list
+- [ ] Show comment list with nested replies (future enhancement)
+- [ ] Add post sharing (native share) (future enhancement)
+- [ ] Implement double-tap to like (future enhancement)
 
 #### Sub-Phase 7.3: Post Creation
-- [ ] Create post creation modal
-- [ ] Link run selection
-- [ ] Add caption input
-- [ ] Implement image upload (optional)
-- [ ] Add post visibility toggle (public/private)
-- [ ] Show post preview before publishing
+- [x] Create post creation screen (two-step flow)
+- [x] Link run selection (filters already-posted runs)
+- [x] Add caption input (500 char limit)
+- [x] Show post preview before publishing
+- [ ] Implement image upload (optional) (future enhancement)
+- [ ] Add post visibility toggle (public/private) (future enhancement)
 
-#### Sub-Phase 7.4: User Connections
+#### Sub-Phase 7.4: User Connections (Future Enhancement)
 - [ ] Implement follow/unfollow functionality
 - [ ] Create user search
 - [ ] Build followers/following lists
 - [ ] Add friend suggestions
 - [ ] Create user profile view (other users)
 
+**Files Created:**
+- `src/services/socialService.ts` - Social API operations
+- `src/components/PostCard.tsx` - Reusable post card component
+- `src/screens/social/SocialFeedScreen.tsx` - Complete rewrite with FlatList
+- `src/screens/social/PostDetailScreen.tsx` - Post detail with comments
+- `src/screens/social/CreatePostScreen.tsx` - Two-step post creation flow
+- `src/navigation/SocialStackNavigator.tsx` - Social tab stack navigator
+
 **Reference Files:**
-- Current placeholder: `src/screens/social/SocialFeedScreen.tsx`
 - User flows: `spec/5. User Flow & Wireframe Docs/runroute_user_flows_wireframes.md`
+
+**Status:** Core functionality complete - feed, likes, comments, post creation. User connections pending.
 
 ---
 
@@ -449,7 +458,7 @@ d:\Projects\RunRoute\
     │   ├── plan/                   # ✅ Complete
     │   ├── track/                  # ✅ Complete
     │   ├── history/                # ✅ Complete (core features)
-    │   ├── social/                 # ⬜ Placeholder
+    │   ├── social/                 # ✅ Complete (core features)
     │   └── profile/                # ⬜ Placeholder
     ├── services/                   # API services
     │   ├── supabase.ts            # ✅ Complete
@@ -457,7 +466,8 @@ d:\Projects\RunRoute\
     │   ├── locationService.ts     # ✅ Complete
     │   ├── googleMapsService.ts   # ✅ Complete
     │   ├── runService.ts          # ✅ Complete
-    │   └── routeService.ts        # ✅ Complete
+    │   ├── routeService.ts        # ✅ Complete
+    │   └── socialService.ts       # ✅ Complete
     ├── store/                      # State management (Zustand)
     │   ├── authStore.ts           # ✅ Complete
     │   ├── routeStore.ts          # ✅ Complete
@@ -599,9 +609,10 @@ Detailed summaries for each completed phase can be found in the `phases/` direct
 - [Phase 4: Database Schema Setup](phases/Phase4.md)
 - [Phase 5: Live Run Tracking](phases/Phase5.md)
 - [Phase 6: Run History & Analytics](phases/Phase6.md)
+- [Phase 7: Social Features](phases/Phase7.md)
 
 ---
 
-**Last Updated:** 2025-11-21
-**Version:** 1.2
-**Status:** Phase 6 Complete - Ready for Social Features Implementation
+**Last Updated:** 2025-11-22
+**Version:** 1.3
+**Status:** Phase 7 Complete - Ready for Profile & Settings Implementation
