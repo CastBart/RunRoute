@@ -96,16 +96,26 @@ export interface Like {
   created_at: string;
 }
 
-export interface Friendship {
+export interface Follow {
   id: string;
-  user_id: string;
-  friend_id: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  follower_id: string;
+  following_id: string;
+  created_at: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  avatar_url?: string;
+  followers_count: number;
+  following_count: number;
   created_at: string;
   updated_at: string;
+}
 
-  // Joined data
-  friend?: User;
+export interface UserWithFollowStatus extends UserProfile {
+  is_following: boolean;
 }
 
 // Navigation Types
@@ -158,6 +168,9 @@ export type SocialStackParamList = {
   PostDetail: { postId: string };
   UserProfile: { userId: string };
   CreatePost: undefined;
+  Followers: { userId: string };
+  Following: { userId: string };
+  Search: undefined;
 };
 
 export type ProfileStackParamList = {

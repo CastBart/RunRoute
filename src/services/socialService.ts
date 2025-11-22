@@ -469,6 +469,470 @@ class SocialService {
 
     return !!data;
   }
+
+  // =============================================
+  // FOLLOW SYSTEM METHODS
+  // =============================================
+
+  /**
+   * Follow a user
+   */
+  async followUser(userId: string): Promise<void> {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session?.user?.id) {
+      throw new Error('User not authenticated');
+    }
+
+    const currentUserId = session.session.user.id;
+    if (currentUserId === userId) {
+      throw new Error('Cannot follow yourself');
+    }
+
+    const { error } = await supabase.from('follows').insert({
+      follower_id: currentUserId,
+      following_id: userId,
+    });
+
+    if (error) {
+      // Ignore duplicate follow errors
+      if (error.code !== '23505') {
+        console.error('Error following user:', error);
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Unfollow a user
+   */
+  async unfollowUser(userId: string): Promise<void> {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session?.user?.id) {
+      throw new Error('User not authenticated');
+    }
+
+    const { error } = await supabase
+      .from('follows')
+      .delete()
+      .eq('follower_id', session.session.user.id)
+      .eq('following_id', userId);
+
+    if (error) {
+      console.error('Error unfollowing user:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if current user is following a specific user
+   */
+  async isFollowing(userId: string): Promise<boolean> {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session?.user?.id) {
+      return false;
+    }
+
+    const { data, error } = await supabase
+      .from('follows')
+      .select('id')
+      .eq('follower_id', session.session.user.id)
+      .eq('following_id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error checking follow status:', error);
+    }
+
+    return !!data;
+  }
+
+  /**
+   * Get followers of a user
+   */
+  async getFollowers(
+    userId: string,
+    limit: number = 50
+  ): Promise<Array<{ id: string; name: string; avatar_url: string | null; is_following: boolean }>> {
+    const { data: session } = await supabase.auth.getSession();
+    const currentUserId = session?.session?.user?.id;
+
+    const { data, error } = await supabase
+      .from('follows')
+      .select(
+        `
+        follower:profiles!follower_id (
+          id,
+          name,
+          avatar_url
+        )
+      `
+      )
+      .eq('following_id', userId)
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching followers:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Check which followers the current user is following
+    const followerIds = data.map((f: any) => f.follower.id);
+    let followingSet = new Set<string>();
+
+    if (currentUserId) {
+      const { data: followingData } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', currentUserId)
+        .in('following_id', followerIds);
+
+      followingSet = new Set((followingData || []).map((f: any) => f.following_id));
+    }
+
+    return data.map((f: any) => ({
+      id: f.follower.id,
+      name: f.follower.name,
+      avatar_url: f.follower.avatar_url,
+      is_following: followingSet.has(f.follower.id),
+    }));
+  }
+
+  /**
+   * Get users that a user is following
+   */
+  async getFollowing(
+    userId: string,
+    limit: number = 50
+  ): Promise<Array<{ id: string; name: string; avatar_url: string | null; is_following: boolean }>> {
+    const { data: session } = await supabase.auth.getSession();
+    const currentUserId = session?.session?.user?.id;
+
+    const { data, error } = await supabase
+      .from('follows')
+      .select(
+        `
+        following:profiles!following_id (
+          id,
+          name,
+          avatar_url
+        )
+      `
+      )
+      .eq('follower_id', userId)
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching following:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Check which users the current user is following
+    const followingIds = data.map((f: any) => f.following.id);
+    let followingSet = new Set<string>();
+
+    if (currentUserId) {
+      const { data: followingData } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', currentUserId)
+        .in('following_id', followingIds);
+
+      followingSet = new Set((followingData || []).map((f: any) => f.following_id));
+    }
+
+    return data.map((f: any) => ({
+      id: f.following.id,
+      name: f.following.name,
+      avatar_url: f.following.avatar_url,
+      is_following: followingSet.has(f.following.id),
+    }));
+  }
+
+  /**
+   * Search users by name
+   */
+  async searchUsers(
+    query: string,
+    limit: number = 20
+  ): Promise<Array<{ id: string; name: string; avatar_url: string | null; is_following: boolean }>> {
+    const { data: session } = await supabase.auth.getSession();
+    const currentUserId = session?.session?.user?.id;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, avatar_url')
+      .ilike('name', `%${query}%`)
+      .neq('id', currentUserId || '')
+      .limit(limit);
+
+    if (error) {
+      console.error('Error searching users:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Check which users the current user is following
+    const userIds = data.map((u: any) => u.id);
+    let followingSet = new Set<string>();
+
+    if (currentUserId) {
+      const { data: followingData } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', currentUserId)
+        .in('following_id', userIds);
+
+      followingSet = new Set((followingData || []).map((f: any) => f.following_id));
+    }
+
+    return data.map((u: any) => ({
+      id: u.id,
+      name: u.name,
+      avatar_url: u.avatar_url,
+      is_following: followingSet.has(u.id),
+    }));
+  }
+
+  /**
+   * Get suggested users to follow (users followed by people you follow)
+   */
+  async getSuggestedUsers(
+    limit: number = 10
+  ): Promise<Array<{ id: string; name: string; avatar_url: string | null; mutual_count: number }>> {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session?.user?.id) {
+      return [];
+    }
+
+    const currentUserId = session.session.user.id;
+
+    // Get users you're following
+    const { data: followingData } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', currentUserId);
+
+    const followingIds = (followingData || []).map((f: any) => f.following_id);
+
+    if (followingIds.length === 0) {
+      // If not following anyone, return some users
+      const { data: anyUsers } = await supabase
+        .from('profiles')
+        .select('id, name, avatar_url')
+        .neq('id', currentUserId)
+        .limit(limit);
+
+      return (anyUsers || []).map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        avatar_url: u.avatar_url,
+        mutual_count: 0,
+      }));
+    }
+
+    // Get users followed by people you follow (excluding yourself and people you already follow)
+    const { data: suggestions, error } = await supabase
+      .from('follows')
+      .select(
+        `
+        following:profiles!following_id (
+          id,
+          name,
+          avatar_url
+        )
+      `
+      )
+      .in('follower_id', followingIds)
+      .not('following_id', 'in', `(${[currentUserId, ...followingIds].join(',')})`)
+      .limit(limit * 3); // Get more to dedupe
+
+    if (error) {
+      console.error('Error fetching suggestions:', error);
+      return [];
+    }
+
+    // Count mutual follows and dedupe
+    const suggestionMap = new Map<
+      string,
+      { id: string; name: string; avatar_url: string | null; mutual_count: number }
+    >();
+
+    (suggestions || []).forEach((s: any) => {
+      const userId = s.following.id;
+      if (suggestionMap.has(userId)) {
+        suggestionMap.get(userId)!.mutual_count += 1;
+      } else {
+        suggestionMap.set(userId, {
+          id: userId,
+          name: s.following.name,
+          avatar_url: s.following.avatar_url,
+          mutual_count: 1,
+        });
+      }
+    });
+
+    // Sort by mutual count and return top N
+    return Array.from(suggestionMap.values())
+      .sort((a, b) => b.mutual_count - a.mutual_count)
+      .slice(0, limit);
+  }
+
+  /**
+   * Get user profile with stats
+   */
+  async getUserProfile(userId: string): Promise<{
+    id: string;
+    name: string;
+    avatar_url: string | null;
+    followers_count: number;
+    following_count: number;
+    total_runs: number;
+    total_distance: number;
+    is_following: boolean;
+    created_at: string;
+  }> {
+    const { data: session } = await supabase.auth.getSession();
+    const currentUserId = session?.session?.user?.id;
+
+    // Fetch profile, run stats, and follow status in parallel
+    const [profileResult, runsResult, followResult] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, name, avatar_url, followers_count, following_count, created_at')
+        .eq('id', userId)
+        .single(),
+      supabase.from('runs').select('distance').eq('user_id', userId),
+      currentUserId && currentUserId !== userId
+        ? supabase
+            .from('follows')
+            .select('id')
+            .eq('follower_id', currentUserId)
+            .eq('following_id', userId)
+            .single()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    if (profileResult.error) {
+      console.error('Error fetching user profile:', profileResult.error);
+      throw profileResult.error;
+    }
+
+    const runs = runsResult.data || [];
+    const totalDistance = runs.reduce((sum: number, run: any) => sum + (run.distance || 0), 0);
+
+    return {
+      id: profileResult.data.id,
+      name: profileResult.data.name,
+      avatar_url: profileResult.data.avatar_url,
+      followers_count: profileResult.data.followers_count || 0,
+      following_count: profileResult.data.following_count || 0,
+      total_runs: runs.length,
+      total_distance: totalDistance,
+      is_following: !!followResult.data,
+      created_at: profileResult.data.created_at,
+    };
+  }
+
+  /**
+   * Get feed posts from users you follow
+   */
+  async getFollowingFeedPosts(limit: number = 20, offset: number = 0): Promise<PostWithDetails[]> {
+    const { data: session } = await supabase.auth.getSession();
+    const currentUserId = session?.session?.user?.id;
+
+    if (!currentUserId) {
+      return [];
+    }
+
+    // Get users the current user is following
+    const { data: followingData } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', currentUserId);
+
+    const followingIds = (followingData || []).map((f: any) => f.following_id);
+
+    // Include own posts too
+    const userIds = [currentUserId, ...followingIds];
+
+    if (userIds.length === 0) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('run_posts')
+      .select(
+        `
+        *,
+        user:profiles!user_id (
+          id,
+          name,
+          avatar_url
+        ),
+        run:runs!run_id (
+          id,
+          distance,
+          duration,
+          average_pace,
+          polyline,
+          start_time
+        )
+      `
+      )
+      .in('user_id', userIds)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error('Error fetching following feed:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    const postIds = data.map((post: any) => post.id);
+
+    // Fetch likes count, comments count, and current user's likes in parallel
+    const [likesResult, commentsResult, userLikesResult] = await Promise.all([
+      supabase.from('likes').select('post_id').in('post_id', postIds),
+      supabase.from('comments').select('post_id').in('post_id', postIds),
+      supabase.from('likes').select('post_id').eq('user_id', currentUserId).in('post_id', postIds),
+    ]);
+
+    // Build counts maps
+    const likesCountMap = new Map<string, number>();
+    const commentsCountMap = new Map<string, number>();
+
+    (likesResult.data || []).forEach((like: any) => {
+      likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1);
+    });
+
+    (commentsResult.data || []).forEach((comment: any) => {
+      commentsCountMap.set(comment.post_id, (commentsCountMap.get(comment.post_id) || 0) + 1);
+    });
+
+    const likedPostIds = new Set((userLikesResult.data || []).map((like: any) => like.post_id));
+
+    return data.map((post: any) => ({
+      ...post,
+      likes_count: likesCountMap.get(post.id) || 0,
+      comments_count: commentsCountMap.get(post.id) || 0,
+      liked_by_current_user: likedPostIds.has(post.id),
+    }));
+  }
 }
 
 export const socialService = new SocialService();

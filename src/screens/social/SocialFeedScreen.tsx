@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../../constants';
 import { socialService, PostWithDetails } from '../../services/socialService';
 import PostCard from '../../components/PostCard';
@@ -17,17 +18,37 @@ import { SocialStackParamList } from '../../types';
 
 type SocialNavigationProp = StackNavigationProp<SocialStackParamList, 'Feed'>;
 
+type FeedMode = 'all' | 'following';
+
 const SocialFeedScreen = () => {
   const navigation = useNavigation<SocialNavigationProp>();
   const [posts, setPosts] = useState<PostWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedMode, setFeedMode] = useState<FeedMode>('all');
+
+  // Add search icon to header
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => navigation.navigate('Search')}
+        >
+          <Ionicons name="search" size={24} color={COLORS.primary} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   const fetchPosts = useCallback(async () => {
     try {
       setError(null);
-      const data = await socialService.getFeedPosts(20, 0);
+      const data =
+        feedMode === 'following'
+          ? await socialService.getFollowingFeedPosts(20, 0)
+          : await socialService.getFeedPosts(20, 0);
       setPosts(data);
     } catch (err: any) {
       console.error('Error fetching feed:', err);
@@ -36,7 +57,7 @@ const SocialFeedScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [feedMode]);
 
   useEffect(() => {
     fetchPosts();
@@ -134,6 +155,26 @@ const SocialFeedScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Feed Toggle */}
+      <View style={styles.feedToggleContainer}>
+        <TouchableOpacity
+          style={[styles.toggleButton, feedMode === 'all' && styles.toggleButtonActive]}
+          onPress={() => setFeedMode('all')}
+        >
+          <Text style={[styles.toggleText, feedMode === 'all' && styles.toggleTextActive]}>
+            For You
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleButton, feedMode === 'following' && styles.toggleButtonActive]}
+          onPress={() => setFeedMode('following')}
+        >
+          <Text style={[styles.toggleText, feedMode === 'following' && styles.toggleTextActive]}>
+            Following
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         data={posts}
         renderItem={renderPost}
@@ -163,6 +204,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  headerButton: {
+    marginRight: SPACING.md,
+    padding: SPACING.xs,
+  },
+  feedToggleContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    alignItems: 'center',
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  toggleButtonActive: {
+    backgroundColor: COLORS.primary,
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  toggleTextActive: {
+    color: '#FFFFFF',
   },
   listContent: {
     padding: SPACING.md,

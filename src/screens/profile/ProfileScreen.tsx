@@ -9,19 +9,26 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { COLORS, SPACING } from '../../constants';
 import { useAuthStore } from '../../store/authStore';
 import { profileService, UserStats } from '../../services/profileService';
+import { socialService } from '../../services/socialService';
 import { ProfileStackParamList } from '../../types';
 
 type ProfileNavigationProp = StackNavigationProp<ProfileStackParamList, 'UserProfile'>;
+
+interface FollowCounts {
+  followers_count: number;
+  following_count: number;
+}
 
 const ProfileScreen = () => {
   const navigation = useNavigation<ProfileNavigationProp>();
   const { user, signOut } = useAuthStore();
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [followCounts, setFollowCounts] = useState<FollowCounts>({ followers_count: 0, following_count: 0 });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -29,8 +36,15 @@ const ProfileScreen = () => {
     if (!user?.id) return;
 
     try {
-      const userStats = await profileService.getUserStats(user.id);
+      const [userStats, profileData] = await Promise.all([
+        profileService.getUserStats(user.id),
+        socialService.getUserProfile(user.id),
+      ]);
       setStats(userStats);
+      setFollowCounts({
+        followers_count: profileData.followers_count,
+        following_count: profileData.following_count,
+      });
     } catch (err) {
       console.error('Error fetching profile data:', err);
     } finally {
@@ -127,6 +141,45 @@ const ProfileScreen = () => {
         </View>
         <Text style={styles.userName}>{user?.name || 'Runner'}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
+
+        {/* Follow Counts */}
+        <View style={styles.followCountsContainer}>
+          <TouchableOpacity
+            style={styles.followCountItem}
+            onPress={() => {
+              navigation.dispatch(
+                CommonActions.navigate({
+                  name: 'Social',
+                  params: {
+                    screen: 'Followers',
+                    params: { userId: user?.id },
+                  },
+                })
+              );
+            }}
+          >
+            <Text style={styles.followCountValue}>{followCounts.followers_count}</Text>
+            <Text style={styles.followCountLabel}>Followers</Text>
+          </TouchableOpacity>
+          <View style={styles.followCountDivider} />
+          <TouchableOpacity
+            style={styles.followCountItem}
+            onPress={() => {
+              navigation.dispatch(
+                CommonActions.navigate({
+                  name: 'Social',
+                  params: {
+                    screen: 'Following',
+                    params: { userId: user?.id },
+                  },
+                })
+              );
+            }}
+          >
+            <Text style={styles.followCountValue}>{followCounts.following_count}</Text>
+            <Text style={styles.followCountLabel}>Following</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.headerButtons}>
           <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
@@ -240,6 +293,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginBottom: SPACING.md,
+  },
+  followCountsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  followCountItem: {
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+  },
+  followCountValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  followCountLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  followCountDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: COLORS.border,
   },
   headerButtons: {
     flexDirection: 'row',
