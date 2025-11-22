@@ -30,6 +30,7 @@ export interface Waypoint extends Location {
 export interface Route {
   id?: string;
   user_id?: string;
+  name?: string; // User-defined route name
   start_location: Location;
   end_location: Location;
   waypoints: Waypoint[];
@@ -120,8 +121,7 @@ export type AuthStackParamList = {
 };
 
 export type MainTabParamList = {
-  Plan: undefined;
-  Track: undefined;
+  Routes: undefined;
   History: undefined;
   Social: undefined;
   Profile: undefined;
@@ -133,6 +133,15 @@ export type PlanStackParamList = {
 };
 
 export type TrackStackParamList = {
+  RunTracker: undefined;
+  RunSummary: { run: Run };
+};
+
+export type RoutesStackParamList = {
+  RoutesHub: undefined;
+  PlanRoute: undefined;
+  SavedRoutes: undefined;
+  RouteDetail: { routeId: string };
   RunTracker: undefined;
   RunSummary: { run: Run };
 };

@@ -161,7 +161,12 @@ const RunTrackerScreen = () => {
 
       if (plannedRoute && routeService.isTemporaryRouteId(plannedRouteId)) {
         console.log('Saving planned route to database first...');
-        const savedRoute = await routeService.saveRoute(plannedRoute);
+        // Add default name if not already set
+        const routeWithName = {
+          ...plannedRoute,
+          name: plannedRoute.name || `${plannedRoute.distance.toFixed(1)}km ${plannedRoute.is_loop ? 'Loop' : 'Route'}`,
+        };
+        const savedRoute = await routeService.saveRoute(routeWithName);
         finalRouteId = savedRoute.id;
         console.log('Route saved with UUID:', finalRouteId);
       }

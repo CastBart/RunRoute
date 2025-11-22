@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   ScrollView,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
@@ -17,6 +20,7 @@ import { getCurrentLocation } from '../../services/locationService';
 import { useRouteStore } from '../../store/routeStore';
 import { useTrackingStore } from '../../store/trackingStore';
 import { formatDistance, formatDuration } from '../../services/googleMapsService';
+import { routeService } from '../../services/routeService';
 import Button from '../../components/Button';
 
 const RoutePlannerScreen = () => {
@@ -27,6 +31,9 @@ const RoutePlannerScreen = () => {
     null
   );
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [routeName, setRouteName] = useState('');
 
   const {
     currentRoute,
@@ -135,7 +142,7 @@ const RoutePlannerScreen = () => {
     useTrackingStore.getState().setPlannedRoute(currentRoute);
 
     // Navigate to tracking screen
-    navigation.navigate('Track' as never);
+    navigation.navigate('RunTracker' as never);
 
     // Show user feedback
     Alert.alert(
@@ -143,6 +150,64 @@ const RoutePlannerScreen = () => {
       'Your planned route is ready. Press "Start Run" to begin tracking.',
       [{ text: 'OK' }]
     );
+  };
+
+  // Handle save route for later - opens modal
+  const handleSaveRoute = () => {
+    console.log('📝 handleSaveRoute called, currentRoute:', !!currentRoute);
+    if (!currentRoute) {
+      Alert.alert('No Route', 'Please generate a route first.');
+      return;
+    }
+
+    // Set default name and show modal
+    const defaultName = `${currentRoute.distance.toFixed(1)}km ${currentRoute.is_loop ? 'Loop' : 'Route'}`;
+    console.log('📝 Opening save modal with default name:', defaultName);
+    setRouteName(defaultName);
+    setShowSaveModal(true);
+  };
+
+  // Confirm save route from modal
+  const handleConfirmSave = async () => {
+    console.log('📝 handleConfirmSave called, routeName:', routeName);
+    if (!routeName?.trim()) {
+      Alert.alert('Error', 'Please enter a route name.');
+      return;
+    }
+
+    if (!currentRoute) {
+      console.error('📝 No currentRoute available');
+      return;
+    }
+
+    setIsSaving(true);
+    setShowSaveModal(false);
+
+    try {
+      const routeWithName = {
+        ...currentRoute,
+        name: routeName.trim(),
+      };
+      console.log('📝 Saving route:', routeWithName.name);
+      await routeService.saveRoute(routeWithName);
+      console.log('📝 Route saved successfully!');
+      Alert.alert('Success', 'Route saved successfully!', [
+        { text: 'OK', onPress: () => clearRoute() },
+      ]);
+      setRouteName('');
+    } catch (err: any) {
+      console.error('📝 Error saving route:', err);
+      Alert.alert('Error', 'Failed to save route. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Cancel save route modal
+  const handleCancelSave = () => {
+    console.log('📝 Save cancelled');
+    setShowSaveModal(false);
+    setRouteName('');
   };
 
   // Center map on user location
@@ -239,32 +304,32 @@ const RoutePlannerScreen = () => {
       {/* Controls Panel */}
       <View style={styles.controlsPanel}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Distance Input */}
-          <View style={styles.controlGroup}>
-            <Text style={styles.label}>Target Distance (km)</Text>
-            <TextInput
-              style={styles.input}
-              value={targetDistance.toString()}
-              onChangeText={(text) => {
-                // Allow empty string for clearing
-                if (text === '') {
-                  setTargetDistance(0);
-                  return;
-                }
-                const num = parseFloat(text);
-                if (!isNaN(num) && num >= 0 && num <= 100) {
-                  setTargetDistance(num);
-                }
-              }}
-              keyboardType="decimal-pad"
-              placeholder="5.0"
-            />
-          </View>
+          {/* Compact Controls Row */}
+          <View style={styles.compactControls}>
+            {/* Distance Input */}
+            <View style={styles.distanceControl}>
+              <Text style={styles.labelSmall}>Distance (km)</Text>
+              <TextInput
+                style={styles.inputCompact}
+                value={targetDistance.toString()}
+                onChangeText={(text) => {
+                  if (text === '') {
+                    setTargetDistance(0);
+                    return;
+                  }
+                  const num = parseFloat(text);
+                  if (!isNaN(num) && num >= 0 && num <= 100) {
+                    setTargetDistance(num);
+                  }
+                }}
+                keyboardType="decimal-pad"
+                placeholder="5.0"
+              />
+            </View>
 
-          {/* Loop Toggle */}
-          <View style={styles.controlGroup}>
-            <View style={styles.switchRow}>
-              <Text style={styles.label}>Loop Route</Text>
+            {/* Loop Toggle */}
+            <View style={styles.loopControl}>
+              <Text style={styles.labelSmall}>Loop</Text>
               <Switch
                 value={isLoop}
                 onValueChange={(value) => setIsLoop(value)}
@@ -272,11 +337,6 @@ const RoutePlannerScreen = () => {
                 thumbColor={COLORS.background}
               />
             </View>
-            <Text style={styles.helpText}>
-              {isLoop
-                ? 'Route will return to starting point'
-                : 'Route will end at a different location'}
-            </Text>
           </View>
 
           {/* Route Info */}
@@ -340,6 +400,13 @@ const RoutePlannerScreen = () => {
                   style={styles.startRunButton}
                 />
                 <Button
+                  title="Save Route for Later"
+                  onPress={handleSaveRoute}
+                  loading={isSaving}
+                  variant="outline"
+                  style={styles.saveRouteButton}
+                />
+                <Button
                   title="Clear Route"
                   onPress={handleClearRoute}
                   variant="outline"
@@ -364,6 +431,49 @@ const RoutePlannerScreen = () => {
       <TouchableOpacity style={styles.myLocationButton} onPress={centerOnUserLocation}>
         <Text style={styles.myLocationIcon}>📍</Text>
       </TouchableOpacity>
+
+      {/* Save Route Modal */}
+      <Modal
+        visible={showSaveModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelSave}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Save Route</Text>
+            <Text style={styles.modalSubtitle}>Enter a name for this route:</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={routeName}
+              onChangeText={setRouteName}
+              placeholder="Route name"
+              autoFocus
+              selectTextOnFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={handleCancelSave}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalSaveButton]}
+                onPress={handleConfirmSave}
+                disabled={isSaving}
+              >
+                <Text style={styles.modalSaveText}>
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -394,8 +504,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: SPACING.lg,
-    maxHeight: '50%',
+    padding: SPACING.md,
+    maxHeight: '40%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -403,7 +513,35 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   controlGroup: {
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
+  },
+  compactControls: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: SPACING.md,
+    gap: SPACING.md,
+  },
+  distanceControl: {
+    flex: 1,
+  },
+  loopControl: {
+    alignItems: 'center',
+    paddingBottom: 4,
+  },
+  labelSmall: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  inputCompact: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    padding: SPACING.sm,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text,
+    backgroundColor: COLORS.background,
   },
   label: {
     fontSize: FONT_SIZES.md,
@@ -483,6 +621,9 @@ const styles = StyleSheet.create({
   startRunButton: {
     marginTop: SPACING.sm,
   },
+  saveRouteButton: {
+    marginTop: SPACING.sm,
+  },
   clearButton: {
     marginTop: SPACING.sm,
   },
@@ -504,6 +645,73 @@ const styles = StyleSheet.create({
   },
   myLocationIcon: {
     fontSize: 24,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
+  },
+  modalContent: {
+    backgroundColor: COLORS.background,
+    borderRadius: 16,
+    padding: SPACING.lg,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  modalSubtitle: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.md,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    padding: SPACING.md,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text,
+    backgroundColor: COLORS.surface,
+    marginBottom: SPACING.lg,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  modalButton: {
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: 8,
+    marginLeft: SPACING.sm,
+  },
+  modalCancelButton: {
+    backgroundColor: COLORS.surface,
+  },
+  modalCancelText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  modalSaveButton: {
+    backgroundColor: COLORS.primary,
+  },
+  modalSaveText: {
+    fontSize: FONT_SIZES.md,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 

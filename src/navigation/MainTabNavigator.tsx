@@ -3,11 +3,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from '../types';
 import { COLORS } from '../constants';
 
-// Screen imports
-import RoutePlannerScreen from '../screens/plan/RoutePlannerScreen';
-import RunTrackerScreen from '../screens/track/RunTrackerScreen';
-
 // Stack navigators for tabs with nested screens
+import RoutesStackNavigator from './RoutesStackNavigator';
 import HistoryStackNavigator from './HistoryStackNavigator';
 import SocialStackNavigator from './SocialStackNavigator';
 import ProfileStackNavigator from './ProfileStackNavigator';
@@ -29,19 +26,12 @@ const MainTabNavigator = () => {
       }}
     >
       <Tab.Screen
-        name="Plan"
-        component={RoutePlannerScreen}
+        name="Routes"
+        component={RoutesStackNavigator}
         options={{
-          title: 'Plan Route',
-          tabBarLabel: 'Plan',
-        }}
-      />
-      <Tab.Screen
-        name="Track"
-        component={RunTrackerScreen}
-        options={{
-          title: 'Track Run',
-          tabBarLabel: 'Track',
+          title: 'Routes',
+          tabBarLabel: 'Routes',
+          headerShown: false, // Stack navigator handles its own headers
         }}
       />
       <Tab.Screen

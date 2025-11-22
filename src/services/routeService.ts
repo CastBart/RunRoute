@@ -39,6 +39,7 @@ class RouteService {
       .insert([
         {
           user_id: user.id,
+          name: route.name || null,
           start_location: {
             latitude: route.start_location.latitude,
             longitude: route.start_location.longitude,

@@ -21,7 +21,7 @@ export default function App() {
       <SafeAreaProvider>
         <NavigationContainer>
           <RootNavigator />
-          <StatusBar style="auto" />
+          <StatusBar style="dark" />
         </NavigationContainer>
       </SafeAreaProvider>
     </QueryClientProvider>

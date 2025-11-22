@@ -18,19 +18,10 @@ import { ProfileStackParamList } from '../../types';
 
 type ProfileNavigationProp = StackNavigationProp<ProfileStackParamList, 'UserProfile'>;
 
-interface RecentRun {
-  id: string;
-  distance: number;
-  duration: number;
-  average_pace: number;
-  start_time: string;
-}
-
 const ProfileScreen = () => {
   const navigation = useNavigation<ProfileNavigationProp>();
   const { user, signOut } = useAuthStore();
   const [stats, setStats] = useState<UserStats | null>(null);
-  const [recentRuns, setRecentRuns] = useState<RecentRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -38,12 +29,8 @@ const ProfileScreen = () => {
     if (!user?.id) return;
 
     try {
-      const [userStats, runs] = await Promise.all([
-        profileService.getUserStats(user.id),
-        profileService.getRecentRuns(user.id, 5),
-      ]);
+      const userStats = await profileService.getUserStats(user.id);
       setStats(userStats);
-      setRecentRuns(runs);
     } catch (err) {
       console.error('Error fetching profile data:', err);
     } finally {
@@ -102,21 +89,6 @@ const ProfileScreen = () => {
     if (secondsPerKm === 0) return '--:--';
     const mins = Math.floor(secondsPerKm / 60);
     const secs = Math.round(secondsPerKm % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  const formatRunDuration = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    if (hours > 0) {
-      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -203,31 +175,6 @@ const ProfileScreen = () => {
               </View>
             )}
           </View>
-        )}
-      </View>
-
-      {/* Recent Runs */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Runs</Text>
-        {recentRuns.length === 0 ? (
-          <View style={styles.emptyRuns}>
-            <Text style={styles.emptyText}>No runs yet. Start tracking!</Text>
-          </View>
-        ) : (
-          recentRuns.map((run) => (
-            <View key={run.id} style={styles.runItem}>
-              <View style={styles.runDate}>
-                <Text style={styles.runDateText}>{formatDate(run.start_time)}</Text>
-              </View>
-              <View style={styles.runStats}>
-                <Text style={styles.runStat}>{run.distance.toFixed(2)} km</Text>
-                <Text style={styles.runStatDivider}>•</Text>
-                <Text style={styles.runStat}>{formatRunDuration(run.duration)}</Text>
-                <Text style={styles.runStatDivider}>•</Text>
-                <Text style={styles.runStat}>{formatPace(run.average_pace)} /km</Text>
-              </View>
-            </View>
-          ))
         )}
       </View>
 
@@ -380,48 +327,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
   },
-  emptyRuns: {
-    backgroundColor: COLORS.surface,
-    padding: SPACING.lg,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  runItem: {
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderRadius: 12,
-    marginBottom: SPACING.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  runDate: {
-    marginRight: SPACING.md,
-  },
-  runDateText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  runStats: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  runStat: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-  },
-  runStatDivider: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginHorizontal: SPACING.xs,
-  },
   logoutButton: {
-    backgroundColor: COLORS.error,
+    backgroundColor: COLORS.danger,
     padding: SPACING.md,
     borderRadius: 8,
     alignItems: 'center',

@@ -332,6 +332,96 @@
 
 ---
 
+### Phase 9A: Routes Hub & UX Improvements ✅ COMPLETED
+
+**Priority:** HIGH - User experience enhancement
+
+#### Overview:
+Major UX improvement consolidating route planning, saved routes, and run tracking into a unified "Routes" hub screen. Simplifies navigation by removing separate Plan and Track tabs.
+
+#### Tasks:
+- [x] Create RoutesHubScreen with three action cards:
+  - [x] "Plan a Route" → Navigate to RoutePlannerScreen
+  - [x] "Saved Routes" → Navigate to SavedRoutesScreen
+  - [x] "Start Free Run" → Clear planned route, navigate to RunTracker
+- [x] Update RoutePlannerScreen with "Save Route" functionality:
+  - [x] Add route name field support
+  - [x] Implement Alert.prompt for route naming
+  - [x] Save route to database via routeService
+- [x] Create SavedRoutesScreen:
+  - [x] Display saved routes as cards (name, distance, type, date)
+  - [x] Pull-to-refresh functionality
+  - [x] Empty state with "Plan a Route" button
+  - [x] Navigate to RouteDetail on card tap
+- [x] Create RouteDetailScreen:
+  - [x] Full map view with route polyline
+  - [x] Route stats (distance, duration, target)
+  - [x] Start/end markers
+  - [x] "Start This Route" button → sets route in trackingStore → navigates to RunTracker
+  - [x] "Delete Route" button with confirmation
+- [x] Create RoutesStackNavigator with all route-related screens
+- [x] Update MainTabNavigator:
+  - [x] Remove Plan and Track tabs
+  - [x] Add Routes tab with RoutesStackNavigator
+- [x] Update types (RoutesStackParamList, MainTabParamList)
+- [x] Update routeService with name field support
+
+**Files Created/Updated:**
+- `src/screens/routes/RoutesHubScreen.tsx` - NEW: Hub with action cards
+- `src/screens/routes/SavedRoutesScreen.tsx` - NEW: Saved routes list
+- `src/screens/routes/RouteDetailScreen.tsx` - NEW: Route detail with map
+- `src/screens/plan/RoutePlannerScreen.tsx` - UPDATED: Save route functionality
+- `src/navigation/RoutesStackNavigator.tsx` - NEW: Routes tab navigator
+- `src/navigation/MainTabNavigator.tsx` - UPDATED: Replaced Plan/Track with Routes
+- `src/services/routeService.ts` - UPDATED: Name field support
+- `src/types/index.ts` - UPDATED: Added RoutesStackParamList
+
+**Status:** Complete - Routes hub implemented, simplified navigation, save/load routes working.
+
+---
+
+### Phase 9B: UX Review & Visual Polish ✅ COMPLETED
+
+**Priority:** HIGH - User experience improvements
+
+#### Overview:
+Comprehensive UX review addressing visual issues, bugs, and overall app polish. Updated color scheme for a more vibrant, modern look.
+
+#### Tasks:
+- [x] Fix status bar visibility (dark icons on light background)
+- [x] Remove redundant Recent Runs section from ProfileScreen (History tab already exists)
+- [x] Fix social feed likes/comments count not updating
+  - Added manual count updates in socialService after like/unlike/comment actions
+- [x] Improve Route Planner drawer layout
+  - Reduced max height from 50% to 40%
+  - Made controls more compact (distance + loop toggle on same row)
+- [x] Update color scheme for visual refresh
+  - New primary: #FF6B35 (Energetic orange)
+  - New secondary: #4ECDC4 (Teal)
+  - Warmer background tones
+  - Softer text colors for better readability
+
+**Files Modified:**
+- `App.js` - StatusBar style changed to "dark"
+- `src/screens/profile/ProfileScreen.tsx` - Removed Recent Runs section
+- `src/services/socialService.ts` - Added count update methods for likes/comments
+- `src/screens/plan/RoutePlannerScreen.tsx` - Compact drawer layout
+- `src/constants/index.ts` - New vibrant color palette
+
+**New Color Palette:**
+```
+Primary:    #FF6B35 (Orange)
+Secondary:  #4ECDC4 (Teal)
+Success:    #10B981 (Emerald)
+Danger:     #EF4444 (Red)
+Background: #FAFAFA (Warm off-white)
+Text:       #1F2937 (Dark gray)
+```
+
+**Status:** Complete - All UX improvements implemented.
+
+---
+
 ### Phase 9: Advanced Features & Polish ⬜ TODO
 
 **Priority:** LOW - Post-MVP
@@ -622,9 +712,11 @@ Detailed summaries for each completed phase can be found in the `phases/` direct
 - [Phase 6: Run History & Analytics](phases/Phase6.md)
 - [Phase 7: Social Features](phases/Phase7.md)
 - [Phase 8: Profile & Settings](phases/Phase8.md)
+- [Phase 9A: Routes Hub & UX Improvements](phases/Phase9A.md)
+- [Phase 9B: UX Review & Visual Polish](phases/Phase9B.md)
 
 ---
 
 **Last Updated:** 2025-11-22
-**Version:** 1.4
-**Status:** Phase 8 Complete - All Core Features Implemented! Ready for Polish & Advanced Features
+**Version:** 1.6
+**Status:** Phase 9B Complete - UX Review & Visual Polish Implemented!

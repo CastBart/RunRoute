@@ -67,23 +67,54 @@ class SocialService {
       throw error;
     }
 
-    // Check which posts current user has liked
-    let likedPostIds: Set<string> = new Set();
-    if (currentUserId && data && data.length > 0) {
-      const postIds = data.map((post: any) => post.id);
-      const { data: likes } = await supabase
-        .from('likes')
-        .select('post_id')
-        .eq('user_id', currentUserId)
-        .in('post_id', postIds);
-
-      if (likes) {
-        likedPostIds = new Set(likes.map((like: any) => like.post_id));
-      }
+    if (!data || data.length === 0) {
+      return [];
     }
 
-    return (data || []).map((post: any) => ({
+    const postIds = data.map((post: any) => post.id);
+
+    // Fetch likes count, comments count, and current user's likes in parallel
+    const [likesResult, commentsResult, userLikesResult] = await Promise.all([
+      // Count likes per post
+      supabase
+        .from('likes')
+        .select('post_id')
+        .in('post_id', postIds),
+      // Count comments per post
+      supabase
+        .from('comments')
+        .select('post_id')
+        .in('post_id', postIds),
+      // Check which posts current user has liked
+      currentUserId
+        ? supabase
+            .from('likes')
+            .select('post_id')
+            .eq('user_id', currentUserId)
+            .in('post_id', postIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    // Build counts maps
+    const likesCountMap = new Map<string, number>();
+    const commentsCountMap = new Map<string, number>();
+
+    (likesResult.data || []).forEach((like: any) => {
+      likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1);
+    });
+
+    (commentsResult.data || []).forEach((comment: any) => {
+      commentsCountMap.set(comment.post_id, (commentsCountMap.get(comment.post_id) || 0) + 1);
+    });
+
+    const likedPostIds = new Set(
+      (userLikesResult.data || []).map((like: any) => like.post_id)
+    );
+
+    return data.map((post: any) => ({
       ...post,
+      likes_count: likesCountMap.get(post.id) || 0,
+      comments_count: commentsCountMap.get(post.id) || 0,
       liked_by_current_user: likedPostIds.has(post.id),
     }));
   }
@@ -121,22 +152,31 @@ class SocialService {
       throw error;
     }
 
-    // Check if current user liked this post
-    let likedByCurrentUser = false;
-    if (currentUserId) {
-      const { data: like } = await supabase
+    // Fetch counts and user like status in parallel
+    const [likesResult, commentsResult, userLikeResult] = await Promise.all([
+      supabase
         .from('likes')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', currentUserId)
-        .single();
-
-      likedByCurrentUser = !!like;
-    }
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', postId),
+      supabase
+        .from('comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', postId),
+      currentUserId
+        ? supabase
+            .from('likes')
+            .select('id')
+            .eq('post_id', postId)
+            .eq('user_id', currentUserId)
+            .single()
+        : Promise.resolve({ data: null }),
+    ]);
 
     return {
       ...data,
-      liked_by_current_user: likedByCurrentUser,
+      likes_count: likesResult.count || 0,
+      comments_count: commentsResult.count || 0,
+      liked_by_current_user: !!userLikeResult.data,
     };
   }
 
@@ -350,23 +390,51 @@ class SocialService {
       throw error;
     }
 
-    // Check which posts current user has liked
-    let likedPostIds: Set<string> = new Set();
-    if (currentUserId && data && data.length > 0) {
-      const postIds = data.map((post: any) => post.id);
-      const { data: likes } = await supabase
-        .from('likes')
-        .select('post_id')
-        .eq('user_id', currentUserId)
-        .in('post_id', postIds);
-
-      if (likes) {
-        likedPostIds = new Set(likes.map((like: any) => like.post_id));
-      }
+    if (!data || data.length === 0) {
+      return [];
     }
 
-    return (data || []).map((post: any) => ({
+    const postIds = data.map((post: any) => post.id);
+
+    // Fetch likes count, comments count, and current user's likes in parallel
+    const [likesResult, commentsResult, userLikesResult] = await Promise.all([
+      supabase
+        .from('likes')
+        .select('post_id')
+        .in('post_id', postIds),
+      supabase
+        .from('comments')
+        .select('post_id')
+        .in('post_id', postIds),
+      currentUserId
+        ? supabase
+            .from('likes')
+            .select('post_id')
+            .eq('user_id', currentUserId)
+            .in('post_id', postIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    // Build counts maps
+    const likesCountMap = new Map<string, number>();
+    const commentsCountMap = new Map<string, number>();
+
+    (likesResult.data || []).forEach((like: any) => {
+      likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1);
+    });
+
+    (commentsResult.data || []).forEach((comment: any) => {
+      commentsCountMap.set(comment.post_id, (commentsCountMap.get(comment.post_id) || 0) + 1);
+    });
+
+    const likedPostIds = new Set(
+      (userLikesResult.data || []).map((like: any) => like.post_id)
+    );
+
+    return data.map((post: any) => ({
       ...post,
+      likes_count: likesCountMap.get(post.id) || 0,
+      comments_count: commentsCountMap.get(post.id) || 0,
       liked_by_current_user: likedPostIds.has(post.id),
     }));
   }

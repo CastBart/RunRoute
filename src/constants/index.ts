@@ -1,33 +1,35 @@
 // App Constants
 export const APP_NAME = 'RunRoute';
 
-// Colors
+// Colors - Vibrant Running Theme
 export const COLORS = {
-  primary: '#007AFF',
-  secondary: '#5856D6',
-  success: '#34C759',
-  danger: '#FF3B30',
-  warning: '#FF9500',
-  info: '#5AC8FA',
+  // Primary brand colors
+  primary: '#FF6B35',      // Energetic orange - represents energy/running
+  secondary: '#4ECDC4',    // Teal - complementary accent
+  success: '#10B981',      // Emerald green
+  danger: '#EF4444',       // Red
+  warning: '#F59E0B',      // Amber
+  info: '#3B82F6',         // Blue
 
-  background: '#FFFFFF',
-  backgroundSecondary: '#F2F2F7',
-  surface: '#FFFFFF',
-  text: '#000000',
-  textSecondary: '#8E8E93',
-  border: '#C6C6C8',
+  // Surface colors
+  background: '#FAFAFA',   // Warm off-white
+  backgroundSecondary: '#F3F4F6',  // Light gray
+  surface: '#FFFFFF',      // Pure white for cards
+  text: '#1F2937',         // Dark gray (softer than black)
+  textSecondary: '#6B7280', // Medium gray
+  border: '#E5E7EB',       // Light border
 
   // Map markers
-  startMarker: '#34C759', // Green
-  endMarker: '#FF3B30',   // Red
-  waypointMarker: '#007AFF', // Blue
+  startMarker: '#10B981',  // Green
+  endMarker: '#EF4444',    // Red
+  waypointMarker: '#FF6B35', // Primary orange
 
   // Route colors
-  plannedRoute: '#007AFF',
-  activeRoute: '#34C759',
-  completedRoute: '#5856D6',
-  plannedRouteOverlay: '#007AFF', // Blue for planned route on tracking screen
-  liveTrailActive: '#34C759',      // Green for GPS trail
+  plannedRoute: '#FF6B35', // Primary orange for planned routes
+  activeRoute: '#10B981',  // Green for active tracking
+  completedRoute: '#4ECDC4', // Teal for completed
+  plannedRouteOverlay: '#FF6B35', // Orange for planned route on tracking screen
+  liveTrailActive: '#10B981',      // Green for GPS trail
 };
 
 // Typography
