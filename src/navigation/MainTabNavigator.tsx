@@ -6,11 +6,11 @@ import { COLORS } from '../constants';
 // Screen imports
 import RoutePlannerScreen from '../screens/plan/RoutePlannerScreen';
 import RunTrackerScreen from '../screens/track/RunTrackerScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen';
 
 // Stack navigators for tabs with nested screens
 import HistoryStackNavigator from './HistoryStackNavigator';
 import SocialStackNavigator from './SocialStackNavigator';
+import ProfileStackNavigator from './ProfileStackNavigator';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -64,10 +64,11 @@ const MainTabNavigator = () => {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileStackNavigator}
         options={{
           title: 'Profile',
           tabBarLabel: 'Profile',
+          headerShown: false, // Stack navigator handles its own headers
         }}
       />
     </Tab.Navigator>

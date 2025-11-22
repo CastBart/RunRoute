@@ -54,15 +54,16 @@
 
 ### ⚠️ Partially Implemented (Placeholder Screens Only)
 
-- ⬜ Profile Screen (placeholder UI, no profile data)
+(None - all core screens are now implemented!)
 
 ### ⬜ Not Yet Implemented
 
-- ⬜ User profiles and settings
-- ⬜ Image uploads
+- ⬜ Image uploads (avatar, post images)
 - ⬜ Push notifications
 - ⬜ Background location tracking (requires device testing)
 - ⬜ User connections (follow/unfollow)
+- ⬜ Settings persistence
+- ⬜ Theme selection (dark mode)
 
 ---
 
@@ -293,32 +294,41 @@
 
 ---
 
-### Phase 8: Profile & Settings ⬜ TODO
+### Phase 8: Profile & Settings ✅ COMPLETED (Core Features)
 
 **Priority:** MEDIUM
 
 #### Tasks:
-- [ ] Replace placeholder ProfileScreen
-- [ ] Display user profile information
-- [ ] Show user statistics summary
-- [ ] List recent runs
-- [ ] Create profile edit screen:
-  - [ ] Name, username, bio editing
-  - [ ] Avatar upload
-  - [ ] Units preference (metric/imperial)
-- [ ] Build settings screen:
-  - [ ] Privacy settings
-  - [ ] Location privacy options
-  - [ ] Notification preferences
-  - [ ] Theme selection (light/dark/auto)
-- [ ] Implement account management:
-  - [ ] Change password
-  - [ ] Email verification
-  - [ ] Account deletion
-- [ ] Add logout functionality
+- [x] Replace placeholder ProfileScreen
+- [x] Display user profile information (avatar, name, email)
+- [x] Show user statistics summary (total runs, distance, time, pace)
+- [x] Display personal records (longest run, fastest pace)
+- [x] List recent runs (last 5)
+- [x] Create profile edit screen:
+  - [x] Name editing
+  - [x] Avatar URL input
+  - [ ] Avatar image upload (future enhancement)
+  - [ ] Units preference persistence (future enhancement)
+- [x] Build settings screen:
+  - [x] Units toggle (metric/imperial)
+  - [x] Privacy toggles (public profile, show on map, allow comments)
+  - [ ] Notification preferences (future enhancement)
+  - [ ] Theme selection (light/dark/auto) (future enhancement)
+- [x] Implement account management:
+  - [x] Logout functionality with confirmation
+  - [x] Delete account option (placeholder)
+  - [ ] Change password (future enhancement)
+  - [ ] Email verification (future enhancement)
+- [x] Add logout functionality (in ProfileScreen and SettingsScreen)
 
-**Reference Files:**
-- Current placeholder: `src/screens/profile/ProfileScreen.tsx`
+**Files Created:**
+- `src/services/profileService.ts` - Profile API operations
+- `src/screens/profile/ProfileScreen.tsx` - Complete rewrite with stats
+- `src/screens/profile/EditProfileScreen.tsx` - Profile editing form
+- `src/screens/profile/SettingsScreen.tsx` - App settings
+- `src/navigation/ProfileStackNavigator.tsx` - Profile tab stack navigator
+
+**Status:** Core functionality complete - profile view, edit, settings, logout. Advanced features pending.
 
 ---
 
@@ -459,7 +469,7 @@ d:\Projects\RunRoute\
     │   ├── track/                  # ✅ Complete
     │   ├── history/                # ✅ Complete (core features)
     │   ├── social/                 # ✅ Complete (core features)
-    │   └── profile/                # ⬜ Placeholder
+    │   └── profile/                # ✅ Complete (core features)
     ├── services/                   # API services
     │   ├── supabase.ts            # ✅ Complete
     │   ├── authService.ts         # ✅ Complete
@@ -467,7 +477,8 @@ d:\Projects\RunRoute\
     │   ├── googleMapsService.ts   # ✅ Complete
     │   ├── runService.ts          # ✅ Complete
     │   ├── routeService.ts        # ✅ Complete
-    │   └── socialService.ts       # ✅ Complete
+    │   ├── socialService.ts       # ✅ Complete
+    │   └── profileService.ts      # ✅ Complete
     ├── store/                      # State management (Zustand)
     │   ├── authStore.ts           # ✅ Complete
     │   ├── routeStore.ts          # ✅ Complete
@@ -610,9 +621,10 @@ Detailed summaries for each completed phase can be found in the `phases/` direct
 - [Phase 5: Live Run Tracking](phases/Phase5.md)
 - [Phase 6: Run History & Analytics](phases/Phase6.md)
 - [Phase 7: Social Features](phases/Phase7.md)
+- [Phase 8: Profile & Settings](phases/Phase8.md)
 
 ---
 
 **Last Updated:** 2025-11-22
-**Version:** 1.3
-**Status:** Phase 7 Complete - Ready for Profile & Settings Implementation
+**Version:** 1.4
+**Status:** Phase 8 Complete - All Core Features Implemented! Ready for Polish & Advanced Features
