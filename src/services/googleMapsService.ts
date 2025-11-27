@@ -28,6 +28,14 @@ export interface DirectionsResult {
   }>;
 }
 
+interface GoogleDirectionsResponse {
+  routes: DirectionsResult['routes'];
+  status: 'OK' | 'NOT_FOUND' | 'ZERO_RESULTS' | 'MAX_WAYPOINTS_EXCEEDED' |
+          'MAX_ROUTE_LENGTH_EXCEEDED' | 'INVALID_REQUEST' | 'OVER_QUERY_LIMIT' |
+          'REQUEST_DENIED' | 'UNKNOWN_ERROR';
+  error_message?: string;
+}
+
 export interface PlaceAutocompleteResult {
   predictions: Array<{
     description: string;
@@ -83,18 +91,30 @@ export const getDirections = async (
       hasWaypoints: !!waypointsParam,
     });
 
-    const response = await axios.get<DirectionsResult>(DIRECTIONS_API_URL, { params });
+    const response = await axios.get<GoogleDirectionsResponse>(DIRECTIONS_API_URL, { params });
 
     console.log('📥 Response status:', response.status);
+    console.log('📥 Google API status:', response.data.status);
     console.log('📥 Routes found:', response.data.routes?.length || 0);
+
+    // Check Google's API status field (returned even on HTTP 200)
+    if (response.data.status !== 'OK') {
+      const errorMsg = response.data.error_message || `Google API returned status: ${response.data.status}`;
+      console.error('❌ Google API error:', {
+        status: response.data.status,
+        error_message: response.data.error_message,
+        hint: getErrorHint(response.data.status)
+      });
+      return { data: null, error: errorMsg };
+    }
 
     if (response.data.routes && response.data.routes.length > 0) {
       console.log('✅ Directions API success');
-      return { data: response.data, error: null };
+      return { data: response.data as DirectionsResult, error: null };
     }
 
-    console.warn('⚠️ No routes in response');
-    return { data: null, error: 'No routes found' };
+    console.warn('⚠️ No routes in response despite OK status');
+    return { data: null, error: 'No routes found for the given locations' };
   } catch (error: any) {
     console.error('❌ Directions API error:', error.response?.data || error.message);
     if (error.response?.data?.error_message) {
@@ -243,4 +263,22 @@ export const formatDuration = (durationInSeconds: number): string => {
     return `${hours}h ${minutes}m`;
   }
   return `${minutes}m`;
+};
+
+/**
+ * Get helpful error hint based on Google API status
+ */
+const getErrorHint = (status: string): string => {
+  switch (status) {
+    case 'REQUEST_DENIED':
+      return 'Check API key is valid, Directions API is enabled, and restrictions allow this app';
+    case 'OVER_QUERY_LIMIT':
+      return 'API quota exceeded or billing not enabled';
+    case 'ZERO_RESULTS':
+      return 'No route possible between these locations';
+    case 'INVALID_REQUEST':
+      return 'Invalid request parameters';
+    default:
+      return 'Unknown error';
+  }
 };

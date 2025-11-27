@@ -8,6 +8,8 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+*.keystore
+*.jks
 
 # Native
 .kotlin/
@@ -40,3 +42,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+#credentails
+credentials.json

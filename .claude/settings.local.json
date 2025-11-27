@@ -4,7 +4,11 @@
       "Bash(npx tsc:*)",
       "Bash(npx expo install:*)",
       "Bash(cat:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(find:*)",
+      "Bash(eas build:list:*)",
+      "Bash(eas build:view:*)",
+      "Bash(eas credentials:*)"
     ],
     "deny": [],
     "ask": []

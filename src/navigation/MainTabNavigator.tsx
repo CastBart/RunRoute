@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { MainTabParamList } from '../types';
 import { COLORS } from '../constants';
 
@@ -32,6 +33,9 @@ const MainTabNavigator = () => {
           title: 'Routes',
           tabBarLabel: 'Routes',
           headerShown: false, // Stack navigator handles its own headers
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'map' : 'map-outline'} size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -41,6 +45,9 @@ const MainTabNavigator = () => {
           title: 'Run History',
           tabBarLabel: 'History',
           headerShown: false, // Stack navigator handles its own headers
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'time' : 'time-outline'} size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -50,6 +57,9 @@ const MainTabNavigator = () => {
           title: 'Social Feed',
           tabBarLabel: 'Social',
           headerShown: false, // Stack navigator handles its own headers
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -59,6 +69,9 @@ const MainTabNavigator = () => {
           title: 'Profile',
           tabBarLabel: 'Profile',
           headerShown: false, // Stack navigator handles its own headers
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

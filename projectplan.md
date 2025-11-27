@@ -61,7 +61,6 @@
 - ⬜ Image uploads (avatar, post images)
 - ⬜ Push notifications
 - ⬜ Background location tracking (requires device testing)
-- ⬜ User connections (follow/unfollow)
 - ⬜ Settings persistence
 - ⬜ Theme selection (dark mode)
 
@@ -277,25 +276,39 @@
 - [ ] Implement image upload (optional) (future enhancement)
 - [ ] Add post visibility toggle (public/private) (future enhancement)
 
-#### Sub-Phase 7.4: User Connections (Future Enhancement)
-- [ ] Implement follow/unfollow functionality
-- [ ] Create user search
-- [ ] Build followers/following lists
-- [ ] Add friend suggestions
-- [ ] Create user profile view (other users)
+#### Sub-Phase 7.4: User Connections ✅ COMPLETED
+- [x] Implement follow/unfollow functionality
+- [x] Create user search with debounced input
+- [x] Build followers/following lists (searchable)
+- [x] Add user suggestions (users followed by people you follow)
+- [x] Create user profile view (other users) with stats and posts
+- [x] Add "For You" / "Following" feed toggle
+- [x] Add follow counts to own profile (tappable, navigates to lists)
 
 **Files Created:**
-- `src/services/socialService.ts` - Social API operations
+- `src/services/socialService.ts` - Social API operations (extended with follow methods)
 - `src/components/PostCard.tsx` - Reusable post card component
-- `src/screens/social/SocialFeedScreen.tsx` - Complete rewrite with FlatList
+- `src/components/FollowButton.tsx` - Reusable follow/unfollow button
+- `src/components/UserListItem.tsx` - Reusable user list item for followers/following/search
+- `src/screens/social/SocialFeedScreen.tsx` - Complete rewrite with FlatList, feed toggle, search
 - `src/screens/social/PostDetailScreen.tsx` - Post detail with comments
 - `src/screens/social/CreatePostScreen.tsx` - Two-step post creation flow
-- `src/navigation/SocialStackNavigator.tsx` - Social tab stack navigator
+- `src/screens/social/UserProfileScreen.tsx` - Public user profile with stats and posts
+- `src/screens/social/FollowersListScreen.tsx` - Searchable followers list
+- `src/screens/social/FollowingListScreen.tsx` - Searchable following list
+- `src/screens/social/UserSearchScreen.tsx` - User discovery with debounced search
+- `src/navigation/SocialStackNavigator.tsx` - Social tab stack navigator (extended with new routes)
 
 **Reference Files:**
 - User flows: `spec/5. User Flow & Wireframe Docs/runroute_user_flows_wireframes.md`
 
-**Status:** Core functionality complete - feed, likes, comments, post creation. User connections pending.
+**Database Changes (Sub-Phase 7.4):**
+- Removed old `friendships` table (mutual friendship model)
+- Created new `follows` table (one-way following like Instagram/Strava)
+- Added `followers_count` and `following_count` columns to `profiles` table
+- Created PostgreSQL triggers for auto-updating follower/following counts with row-level locking
+
+**Status:** Core functionality complete - feed, likes, comments, post creation, follow system, user discovery, and profile viewing all implemented.
 
 ---
 
@@ -326,14 +339,14 @@
   - [ ] Email verification (future enhancement)
 - [x] Add logout functionality (in ProfileScreen and SettingsScreen)
 
-**Files Created:**
+**Files Created/Updated:**
 - `src/services/profileService.ts` - Profile API operations
-- `src/screens/profile/ProfileScreen.tsx` - Complete rewrite with stats
+- `src/screens/profile/ProfileScreen.tsx` - Complete rewrite with stats, follower/following counts
 - `src/screens/profile/EditProfileScreen.tsx` - Profile editing form
 - `src/screens/profile/SettingsScreen.tsx` - App settings
 - `src/navigation/ProfileStackNavigator.tsx` - Profile tab stack navigator
 
-**Status:** Core functionality complete - profile view, edit, settings, logout. Advanced features pending.
+**Status:** Core functionality complete - profile view with follow counts, edit, settings, logout. Advanced features pending.
 
 ---
 
@@ -722,6 +735,6 @@ Detailed summaries for each completed phase can be found in the `phases/` direct
 
 ---
 
-**Last Updated:** 2025-11-22
-**Version:** 1.7
-**Status:** Phase 6 Analytics Complete - Weekly/Monthly Analytics, Run Comparison, Export (GPX/CSV), Share to Social!
+**Last Updated:** 2025-11-24
+**Version:** 1.8
+**Status:** Phase 7.4 Complete - User Connections (Follow/Unfollow, User Discovery, Profile Views)!
