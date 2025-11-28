@@ -45,3 +45,6 @@ yarn-error.*
 
 #credentails
 credentials.json
+
+#google maps
+google-maps-api-setup.md

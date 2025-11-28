@@ -30,8 +30,10 @@ interface RouteState {
   addWaypoint: (location: Location) => void;
   updateWaypoint: (waypointId: string, location: Location) => void;
   removeWaypoint: (waypointId: string) => void;
+  setWaypoints: (waypoints: Waypoint[]) => void;
   generateRoute: () => Promise<void>;
   regenerateRoute: () => Promise<void>; // Generate new route with different seed
+  updateRouteWithWaypoints: () => Promise<void>; // Update route with current waypoints
   clearRoute: () => void;
   clearError: () => void;
 }
@@ -97,6 +99,10 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     const waypoints = get().waypoints
       .filter((wp) => wp.id !== waypointId)
       .map((wp, index) => ({ ...wp, order: index }));
+    set({ waypoints });
+  },
+
+  setWaypoints: (waypoints: Waypoint[]) => {
     set({ waypoints });
   },
 
@@ -219,6 +225,37 @@ export const useRouteStore = create<RouteState>((set, get) => ({
       console.log('Encoded polyline:', route.overview_polyline.points.substring(0, 50) + '...');
       console.log('Number of legs:', route.legs.length);
 
+      // DETAILED ROUTE ANALYSIS (Phase 7 - Debug routing behavior)
+      console.log('\n📊 DETAILED ROUTE ANALYSIS:');
+      console.log('═══════════════════════════════════════');
+      console.log('Number of legs:', route.legs.length);
+      console.log('Expected legs:', waypointLocations.length + 1); // waypoints + 1
+
+      route.legs.forEach((leg, i) => {
+        console.log(`\nLeg ${i + 1}:`);
+        console.log('  From:', `(${leg.start_location.lat.toFixed(5)}, ${leg.start_location.lng.toFixed(5)})`);
+        console.log('  To:', `(${leg.end_location.lat.toFixed(5)}, ${leg.end_location.lng.toFixed(5)})`);
+        console.log('  Distance:', leg.distance.text);
+        console.log('  Duration:', leg.duration.text);
+        console.log('  Steps:', leg.steps.length);
+      });
+
+      // Check waypoint positions
+      console.log('\n📍 WAYPOINT POSITIONS:');
+      console.log('Start:', `(${startLocation.latitude.toFixed(5)}, ${startLocation.longitude.toFixed(5)})`);
+      waypointLocations.forEach((wp, i) => {
+        console.log(`WP${i + 1}:`, `(${wp.latitude.toFixed(5)}, ${wp.longitude.toFixed(5)})`);
+      });
+      console.log('End:', `(${actualEndLocation.latitude.toFixed(5)}, ${actualEndLocation.longitude.toFixed(5)})`);
+
+      // Check if Google reordered waypoints (shouldn't happen without optimize:true)
+      if ((data.routes[0] as any).waypoint_order && (data.routes[0] as any).waypoint_order.length > 0) {
+        console.log('\n⚠️ WARNING: Google reordered waypoints!');
+        console.log('Waypoint order:', (data.routes[0] as any).waypoint_order);
+      }
+
+      console.log('═══════════════════════════════════════\n');
+
       // Decode polyline to get all route points
       const polylinePoints = decodePolyline(route.overview_polyline.points);
 
@@ -256,12 +293,11 @@ export const useRouteStore = create<RouteState>((set, get) => ({
       });
 
       // Create route object
-      // Note: Store original user waypoints, not the auto-generated loop waypoints
       const newRoute: Route = {
         id: `route_${Date.now()}`,
         start_location: startLocation,
         end_location: endLocation,
-        waypoints: waypoints, // User's original waypoints
+        waypoints: generatedWaypoints, // Include auto-generated loop waypoints
         polyline: polylinePoints,
         distance: distanceInKm,
         estimated_duration: totalDurationInSeconds,
@@ -277,6 +313,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
 
       set({
         currentRoute: newRoute,
+        waypoints: generatedWaypoints, // Update store waypoints
         isGenerating: false,
         error: null,
       });
@@ -313,6 +350,136 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     // For loop routes, generateRoute will use Date.now() as new seed
     // This automatically creates a different route
     await get().generateRoute();
+  },
+
+  updateRouteWithWaypoints: async () => {
+    const { startLocation, endLocation, waypoints, targetDistance, isLoop } = get();
+
+    console.log('🔄 Updating route with current waypoints');
+    console.log('Current waypoints:', waypoints.length);
+
+    if (!startLocation || !endLocation) {
+      set({ error: 'Cannot update route: missing location data' });
+      return;
+    }
+
+    set({ isGenerating: true, error: null });
+
+    try {
+      // Prepare waypoints for API call (use existing waypoints, not auto-generated)
+      const waypointLocations = waypoints
+        .sort((a, b) => a.order - b.order)
+        .map((wp) => ({ latitude: wp.latitude, longitude: wp.longitude }));
+
+      console.log('📍 Calling Directions API with user waypoints...');
+      console.log('Using waypoints:', waypointLocations.length);
+
+      // Get directions from Google using current waypoints
+      const { data, error } = await getDirections(
+        startLocation,
+        endLocation,
+        waypointLocations.length > 0 ? waypointLocations : undefined
+      );
+
+      console.log('📡 API Response:', { hasData: !!data, error });
+
+      if (error || !data || data.routes.length === 0) {
+        console.error('❌ API Error:', error);
+        set({
+          error: error || 'No route found. Please try different locations.',
+          isGenerating: false,
+        });
+        return;
+      }
+
+      const route = data.routes[0];
+
+      console.log('📊 Route data received from API');
+      console.log('Encoded polyline:', route.overview_polyline.points.substring(0, 50) + '...');
+      console.log('Number of legs:', route.legs.length);
+
+      // DETAILED ROUTE ANALYSIS (Phase 7 - Debug routing behavior)
+      console.log('\n📊 DETAILED ROUTE ANALYSIS:');
+      console.log('═══════════════════════════════════════');
+      console.log('Number of legs:', route.legs.length);
+      console.log('Expected legs:', waypointLocations.length + 1); // waypoints + 1
+
+      route.legs.forEach((leg, i) => {
+        console.log(`\nLeg ${i + 1}:`);
+        console.log('  From:', `(${leg.start_location.lat.toFixed(5)}, ${leg.start_location.lng.toFixed(5)})`);
+        console.log('  To:', `(${leg.end_location.lat.toFixed(5)}, ${leg.end_location.lng.toFixed(5)})`);
+        console.log('  Distance:', leg.distance.text);
+        console.log('  Duration:', leg.duration.text);
+        console.log('  Steps:', leg.steps.length);
+      });
+
+      // Check waypoint positions
+      console.log('\n📍 WAYPOINT POSITIONS:');
+      console.log('Start:', `(${startLocation.latitude.toFixed(5)}, ${startLocation.longitude.toFixed(5)})`);
+      waypointLocations.forEach((wp, i) => {
+        console.log(`WP${i + 1}:`, `(${wp.latitude.toFixed(5)}, ${wp.longitude.toFixed(5)})`);
+      });
+      console.log('End:', `(${endLocation.latitude.toFixed(5)}, ${endLocation.longitude.toFixed(5)})`);
+
+      // Check if Google reordered waypoints (shouldn't happen without optimize:true)
+      if ((data.routes[0] as any).waypoint_order && (data.routes[0] as any).waypoint_order.length > 0) {
+        console.log('\n⚠️ WARNING: Google reordered waypoints!');
+        console.log('Waypoint order:', (data.routes[0] as any).waypoint_order);
+      }
+
+      console.log('═══════════════════════════════════════\n');
+
+      // Decode polyline to get all route points
+      const polylinePoints = decodePolyline(route.overview_polyline.points);
+
+      console.log('🔵 Decoded polyline points:', polylinePoints.length);
+
+      // Calculate TOTAL distance and duration by summing ALL legs
+      let totalDistanceInMeters = 0;
+      let totalDurationInSeconds = 0;
+
+      route.legs.forEach((leg, index) => {
+        console.log(`Leg ${index + 1}:`, {
+          distance: leg.distance.text,
+          duration: leg.duration.text,
+        });
+        totalDistanceInMeters += leg.distance.value;
+        totalDurationInSeconds += leg.duration.value;
+      });
+
+      const distanceInKm = totalDistanceInMeters / 1000;
+
+      console.log('📏 Total distance:', distanceInKm, 'km');
+
+      // Create updated route object with current waypoints
+      const updatedRoute: Route = {
+        id: `route_${Date.now()}`,
+        start_location: startLocation,
+        end_location: endLocation,
+        waypoints: waypoints, // Keep user's current waypoints
+        polyline: polylinePoints,
+        distance: distanceInKm,
+        estimated_duration: totalDurationInSeconds,
+        is_loop: isLoop,
+        target_distance: targetDistance,
+      };
+
+      console.log('✨ Setting updated route in store');
+
+      set({
+        currentRoute: updatedRoute,
+        isGenerating: false,
+        error: null,
+      });
+
+      console.log('✅ Route update complete!');
+    } catch (error: any) {
+      console.error('Error updating route:', error);
+      set({
+        error: error.message || 'Failed to update route. Please try again.',
+        isGenerating: false,
+      });
+    }
   },
 
   clearRoute: () => {

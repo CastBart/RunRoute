@@ -6,9 +6,9 @@ Complete these steps in order:
 
 - [ ] **Step 1**: Run `eas credentials -p android` in your terminal to get SHA-1 fingerprint
 - [ ] **Step 2**: Open [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
-- [ ] **Step 3**: Edit your API key `AIzaSyBjpGKuIGPXEbnFYxwSeHr5aQZdh0PNRuo`
+- [ ] **Step 3**: Edit your API key `********************`
 - [ ] **Step 4**: Set Application restrictions to "Android apps"
-- [ ] **Step 5**: Add Entry 1: Package `host.exp.exponent` + SHA-1 `20:F4:61:48:C8:43:FB:74:A0:2F:F1:0E:11:AC:BF:7E:58:96:15:62`
+- [ ] **Step 5**: Add Entry 1: Package `host.exp.exponent` + SHA-1 `*************`
 - [ ] **Step 6**: Add Entry 2: Package `com.runroute.app` + SHA-1 from Step 1
 - [ ] **Step 7**: Set API restrictions: Maps SDK for Android, Directions API, Places API
 - [ ] **Step 8**: Save and wait 5 minutes
@@ -63,7 +63,7 @@ https://expo.dev/accounts/castbart/projects/runroute/builds/fc997076-a1b4-409c-b
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Select your project (the one with your Maps API)
 3. Go to **APIs & Services** → **Credentials**
-4. Find your API key: `AIzaSyBjpGKuIGPXEbnFYxwSeHr5aQZdh0PNRuo`
+4. Find your API key: `********************`
 5. Click the **Edit** icon (pencil) next to it
 
 ### 2.2: Get SHA-1 Fingerprint (Required)
@@ -107,7 +107,7 @@ Under **Application restrictions**:
 
    **Entry 1 - Expo Go (for development):**
    - Package name: `host.exp.exponent`
-   - SHA-1 certificate fingerprint: `20:F4:61:48:C8:43:FB:74:A0:2F:F1:0E:11:AC:BF:7E:58:96:15:62` (Expo's default)
+   - SHA-1 certificate fingerprint: `*************` (Expo's default)
 
    > **Note:** This is Expo Go's standard SHA-1. It's public and safe to use.
 
@@ -141,7 +141,7 @@ Click **"Save"** at the bottom.
 Replace `<SHA1>` with one of your actual SHA-1 fingerprints and test:
 
 ```bash
-curl "https://maps.googleapis.com/maps/api/directions/json?origin=51.5074,-0.1278&destination=51.5155,-0.1415&mode=walking&key=AIzaSyBjpGKuIGPXEbnFYxwSeHr5aQZdh0PNRuo"
+curl "https://maps.googleapis.com/maps/api/directions/json?origin=51.5074,-0.1278&destination=51.5155,-0.1415&mode=walking&key=********************"
 ```
 
 **Expected response if working:**
@@ -295,7 +295,7 @@ Based on your setup, here's what I recommend:
 
 ### Single API Key Setup (Simplest)
 
-**Key:** `AIzaSyBjpGKuIGPXEbnFYxwSeHr5aQZdh0PNRuo`
+**Key:** `********************`
 
 **Restrictions:**
 ```
@@ -350,6 +350,6 @@ grep -r "package" app.config.js
 ---
 
 **Last Updated:** 2025-11-26
-**Your API Key:** `AIzaSyBjpGKuIGPXEbnFYxwSeHr5aQZdh0PNRuo`
+**Your API Key:** `********************`
 **Your Package:** `com.runroute.app`
 **Expo Go Package:** `host.exp.exponent`

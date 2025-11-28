@@ -22,7 +22,7 @@ export const COLORS = {
   // Map markers
   startMarker: '#10B981',  // Green
   endMarker: '#EF4444',    // Red
-  waypointMarker: '#FF6B35', // Primary orange
+  waypointMarker: '#3B82F6', // Blue (distinct from orange route)
 
   // Route colors
   plannedRoute: '#FF6B35', // Primary orange for planned routes

@@ -13,7 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, MAP_CONFIG } from '../../constants';
 import { getCurrentLocation } from '../../services/locationService';
@@ -34,6 +34,8 @@ const RoutePlannerScreen = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [routeName, setRouteName] = useState('');
+  const [routeUpdatePending, setRouteUpdatePending] = useState(false);
+  const regenerationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     currentRoute,
@@ -50,8 +52,10 @@ const RoutePlannerScreen = () => {
     setIsLoop,
     addWaypoint,
     updateWaypoint,
+    removeWaypoint,
     generateRoute,
     regenerateRoute,
+    updateRouteWithWaypoints,
     clearRoute,
     clearError,
   } = useRouteStore();
@@ -75,6 +79,15 @@ const RoutePlannerScreen = () => {
   // Get user's current location on mount
   useEffect(() => {
     loadCurrentLocation();
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (regenerationTimerRef.current) {
+        clearTimeout(regenerationTimerRef.current);
+      }
+    };
   }, []);
 
   const loadCurrentLocation = async () => {
@@ -129,6 +142,78 @@ const RoutePlannerScreen = () => {
   // Handle clear route
   const handleClearRoute = () => {
     clearRoute();
+  };
+
+  // Debounced route regeneration
+  const scheduleRouteRegeneration = () => {
+    setRouteUpdatePending(true);
+
+    // Clear existing timer
+    if (regenerationTimerRef.current) {
+      clearTimeout(regenerationTimerRef.current);
+    }
+
+    // Set new 500ms timer
+    regenerationTimerRef.current = setTimeout(async () => {
+      try {
+        await updateRouteWithWaypoints();
+        setRouteUpdatePending(false);
+      } catch (error) {
+        setRouteUpdatePending(false);
+        Alert.alert('Error', 'Failed to update route. Please try again.');
+      }
+    }, 500);
+  };
+
+  // Handle delete waypoint
+  const handleDeleteWaypoint = (waypointId: string) => {
+    Alert.alert(
+      'Remove Waypoint',
+      'Remove this waypoint from the route?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            removeWaypoint(waypointId);
+            if (currentRoute) {
+              scheduleRouteRegeneration();
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Handle add waypoint by tapping route
+  const handlePolylinePress = (event: any) => {
+    if (!currentRoute) return;
+    if (waypoints.length >= 20) {
+      Alert.alert('Limit Reached', 'Maximum 20 waypoints allowed');
+      return;
+    }
+
+    const tappedLocation = event.nativeEvent.coordinate;
+
+    // Find nearest polyline point
+    let minDistance = Infinity;
+    let nearestPoint = tappedLocation;
+
+    currentRoute.polyline.forEach((point) => {
+      const distance = Math.sqrt(
+        Math.pow(point.latitude - tappedLocation.latitude, 2) +
+        Math.pow(point.longitude - tappedLocation.longitude, 2)
+      );
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestPoint = point;
+      }
+    });
+
+    addWaypoint(nearestPoint);
+    Alert.alert('Waypoint Added', 'Route will update in a moment');
+    scheduleRouteRegeneration();
   };
 
   // Handle start run with this route
@@ -275,17 +360,32 @@ const RoutePlannerScreen = () => {
         )}
 
         {/* Waypoint Markers */}
-        {waypoints.map((waypoint) => (
+        {waypoints.map((waypoint, index) => (
           <Marker
             key={waypoint.id}
             coordinate={{
               latitude: waypoint.latitude,
               longitude: waypoint.longitude,
             }}
-            pinColor={COLORS.waypointMarker}
             draggable
-            onDragEnd={(e) => updateWaypoint(waypoint.id, e.nativeEvent.coordinate)}
-          />
+            onDragEnd={(e) => {
+              updateWaypoint(waypoint.id, e.nativeEvent.coordinate);
+              scheduleRouteRegeneration();
+            }}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View style={styles.waypointMarker}>
+              <Text style={styles.waypointNumber}>{index + 1}</Text>
+            </View>
+            <Callout onPress={() => handleDeleteWaypoint(waypoint.id)}>
+              <View style={styles.calloutContainer}>
+                <Text style={styles.calloutTitle}>Waypoint {index + 1}</Text>
+                <TouchableOpacity style={styles.deleteButton}>
+                  <Text style={styles.deleteButtonText}>🗑️ Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </Callout>
+          </Marker>
         ))}
 
         {/* Route Polyline */}
@@ -296,6 +396,8 @@ const RoutePlannerScreen = () => {
               coordinates={currentRoute.polyline}
               strokeColor={COLORS.plannedRoute}
               strokeWidth={4}
+              tappable={true}
+              onPress={handlePolylinePress}
             />
           </>
         )}
@@ -338,6 +440,14 @@ const RoutePlannerScreen = () => {
               />
             </View>
           </View>
+
+          {/* Update Indicator */}
+          {routeUpdatePending && (
+            <View style={styles.updateIndicator}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.updateText}>Updating route...</Text>
+            </View>
+          )}
 
           {/* Route Info */}
           {currentRoute && (
@@ -712,6 +822,63 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  // Waypoint marker styles
+  waypointMarker: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.info, // Blue
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  waypointNumber: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  // Callout styles
+  calloutContainer: {
+    padding: SPACING.sm,
+    minWidth: 120,
+  },
+  calloutTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  deleteButton: {
+    backgroundColor: COLORS.danger,
+    padding: SPACING.xs,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '600',
+  },
+  // Update indicator styles
+  updateIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.sm,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: 8,
+    marginBottom: SPACING.sm,
+  },
+  updateText: {
+    marginLeft: SPACING.sm,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
   },
 });
 
