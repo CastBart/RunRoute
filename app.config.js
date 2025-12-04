@@ -14,6 +14,15 @@ export default {
       resizeMode: "contain",
       backgroundColor: "#007AFF"
     },
+    ios: {
+      bundleIdentifier: "com.runroute.app",
+      supportsTablet: false,
+      infoPlist: {
+        UIBackgroundModes: ["location"],
+        NSLocationAlwaysAndWhenInUseUsageDescription: "RunRoute needs access to your location in the background to track your runs while your screen is locked.",
+        NSLocationWhenInUseUsageDescription: "RunRoute needs access to your location to track your runs and show your position on the map."
+      }
+    },
     android: {
       package: "com.runroute.app",
       versionCode: 1,

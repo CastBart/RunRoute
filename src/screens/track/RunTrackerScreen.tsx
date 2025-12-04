@@ -21,6 +21,10 @@ import {
   convertDistance,
 } from '../../utils/unitConversions';
 import { calculateIntervals } from '../../utils/intervalCalculator';
+import {
+  startBackgroundLocationTracking,
+  stopBackgroundLocationTracking,
+} from '../../services/backgroundLocationService';
 
 const RunTrackerScreen = () => {
   const {
@@ -82,37 +86,28 @@ const RunTrackerScreen = () => {
 
       startTracking({ startPosition });
 
-      const subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 5000,
-          distanceInterval: 5,
-        },
-        (newLocation) => {
-          const newPosition: GPSPoint = {
-            latitude: newLocation.coords.latitude,
-            longitude: newLocation.coords.longitude,
-            altitude: newLocation.coords.altitude || undefined,
-            accuracy: newLocation.coords.accuracy || 0,
-            speed: newLocation.coords.speed || undefined,
-            timestamp: Date.now(),
-          };
+      // Start background location tracking (works even when screen is locked)
+      const started = await startBackgroundLocationTracking((newPosition: GPSPoint) => {
+        // Update tracking store
+        updatePosition(newPosition);
 
-          updatePosition(newPosition);
-
-          if (mapRef.current) {
-            mapRef.current.animateToRegion({
-              latitude: newPosition.latitude,
-              longitude: newPosition.longitude,
-              latitudeDelta: 0.005,
-              longitudeDelta: 0.005,
-            });
-          }
+        // Animate map to follow user (only works when app is in foreground)
+        if (mapRef.current) {
+          mapRef.current.animateToRegion({
+            latitude: newPosition.latitude,
+            longitude: newPosition.longitude,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          });
         }
-      );
+      });
 
-      setLocationSubscription(subscription);
-      setGPSStatus('active');
+      if (started) {
+        setGPSStatus('active');
+        console.log('Background location tracking started successfully');
+      } else {
+        throw new Error('Failed to start background location tracking');
+      }
     } catch (err: any) {
       console.error('Error starting run:', err);
       setError(err.message || 'Failed to start GPS tracking');
@@ -129,7 +124,7 @@ const RunTrackerScreen = () => {
   };
 
   const handleStopRun = () => {
-    
+
     Alert.alert(
       'Stop Run?',
       'Are you sure you want to stop tracking this run?',
@@ -139,10 +134,15 @@ const RunTrackerScreen = () => {
           text: 'Stop',
           style: 'destructive',
           onPress: async () => {
+            // Stop background location tracking
+            await stopBackgroundLocationTracking();
+
+            // Remove old foreground subscription if it exists (legacy)
             if (locationSubscription) {
               locationSubscription.remove();
               setLocationSubscription(null);
             }
+
             stopTracking();
 
             if (gpsTrail.length > 1) {
@@ -241,6 +241,10 @@ const RunTrackerScreen = () => {
 
   useEffect(() => {
     return () => {
+      // Cleanup: stop background tracking when component unmounts
+      stopBackgroundLocationTracking();
+
+      // Remove old foreground subscription if it exists (legacy)
       if (locationSubscription) {
         locationSubscription.remove();
       }
