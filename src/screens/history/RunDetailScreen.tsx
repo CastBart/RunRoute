@@ -20,7 +20,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../../constants';
 import { runService, Run } from '../../services/runService';
 import { socialService } from '../../services/socialService';
-import { HistoryStackParamList } from '../../types';
+import { routeService } from '../../services/routeService';
+import { HistoryStackParamList, PaceInterval } from '../../types';
+import {
+  simplifyPolyline,
+  generateRouteName,
+  convertRunToRoute,
+} from '../../utils/routeConverter';
+import { usePreferencesStore } from '../../store/preferencesStore';
+import {
+  formatDistance,
+  formatPace as formatPaceUtil,
+  formatSpeed,
+  formatElevation,
+  getUnitLabel,
+} from '../../utils/unitConversions';
 
 type DetailNavigationProp = StackNavigationProp<HistoryStackParamList, 'RunDetail'>;
 
@@ -36,12 +50,14 @@ interface RunDetail {
   calories_burned?: number;
   polyline: Array<{ latitude: number; longitude: number }>;
   route_id?: string;
+  intervals?: PaceInterval[]; // NEW: Pace intervals
 }
 
 const RunDetailScreen = () => {
   const route = useRoute<RouteProp<HistoryStackParamList, 'RunDetail'>>();
   const navigation = useNavigation<DetailNavigationProp>();
   const { runId } = route.params;
+  const { distanceUnit } = usePreferencesStore();
 
   const [run, setRun] = useState<RunDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +69,10 @@ const RunDetailScreen = () => {
   const [shareCaption, setShareCaption] = useState('');
   const [sharing, setSharing] = useState(false);
   const [isAlreadyShared, setIsAlreadyShared] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [routeName, setRouteName] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchRunDetails();
@@ -190,6 +210,91 @@ const RunDetailScreen = () => {
     );
   };
 
+  const handleSaveAsRoute = async () => {
+    setShowMoreMenu(false);
+
+    if (!run) return;
+
+    // Check for insufficient GPS data
+    if (!run.polyline || run.polyline.length < 10) {
+      Alert.alert('Error', 'This run has insufficient GPS data to create a route.');
+      return;
+    }
+
+    try {
+      // Check for duplicates
+      const simplifiedPolyline = simplifyPolyline(run.polyline, 0.00005);
+      const { isDuplicate, existingRoute } = await routeService.checkForDuplicate(simplifiedPolyline);
+
+      if (isDuplicate) {
+        Alert.alert(
+          'Duplicate Route',
+          `You already have this route saved as "${existingRoute?.name}".`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Generate suggested name and show modal
+      const suggestedName = generateRouteName(
+        {
+          distance: run.distance,
+          polyline: run.polyline,
+          start_time: run.start_time,
+        },
+        distanceUnit
+      );
+      setRouteName(suggestedName);
+      setShowSaveModal(true);
+    } catch (error) {
+      console.error('Error checking for duplicates:', error);
+      Alert.alert('Error', 'Failed to check for duplicates.');
+    }
+  };
+
+  const confirmSaveRoute = async () => {
+    if (!run || !routeName.trim()) return;
+
+    setSaving(true);
+
+    try {
+      // Convert run to route
+      const routeData = convertRunToRoute(
+        run as any,
+        routeName.trim(),
+        'own_run',
+        false // not a community route
+      );
+
+      // Save to database
+      const savedRoute = await routeService.saveRouteFromRun(routeData);
+
+      setSaving(false);
+      setShowSaveModal(false);
+      setRouteName('');
+
+      // Show success with navigation option
+      Alert.alert(
+        'Route Saved!',
+        `"${routeName}" has been added to your routes.`,
+        [
+          { text: 'OK' },
+          {
+            text: 'View Route',
+            onPress: () => {
+              // Navigate to SavedRoutes screen (RoutesHub -> SavedRoutes)
+              navigation.navigate('RunHistory' as any);
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error saving route:', error);
+      setSaving(false);
+      Alert.alert('Error', 'Failed to save route. Please try again.');
+    }
+  };
+
   // Format duration as hh:mm:ss or mm:ss
   const formatDuration = (seconds: number): string => {
     const hrs = Math.floor(seconds / 3600);
@@ -199,16 +304,6 @@ const RunDetailScreen = () => {
     if (hrs > 0) {
       return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Format pace as m:ss /km
-  const formatPace = (secondsPerKm: number): string => {
-    if (!secondsPerKm || secondsPerKm === 0 || !isFinite(secondsPerKm)) {
-      return '--:--';
-    }
-    const mins = Math.floor(secondsPerKm / 60);
-    const secs = Math.floor(secondsPerKm % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -311,16 +406,16 @@ const RunDetailScreen = () => {
       {/* Main Stats */}
       <View style={styles.mainStatsContainer}>
         <View style={styles.mainStat}>
-          <Text style={styles.mainStatValue}>{run.distance.toFixed(2)}</Text>
-          <Text style={styles.mainStatLabel}>Kilometers</Text>
+          <Text style={styles.mainStatValue}>{formatDistance(run.distance, distanceUnit).split(' ')[0]}</Text>
+          <Text style={styles.mainStatLabel}>{getUnitLabel(distanceUnit, false)}s</Text>
         </View>
         <View style={styles.mainStat}>
           <Text style={styles.mainStatValue}>{formatDuration(run.duration)}</Text>
           <Text style={styles.mainStatLabel}>Duration</Text>
         </View>
         <View style={styles.mainStat}>
-          <Text style={styles.mainStatValue}>{formatPace(run.average_pace)}</Text>
-          <Text style={styles.mainStatLabel}>Avg Pace /km</Text>
+          <Text style={styles.mainStatValue}>{formatPaceUtil(run.average_pace, distanceUnit).split(' ')[0]}</Text>
+          <Text style={styles.mainStatLabel}>Avg Pace {formatPaceUtil(run.average_pace, distanceUnit).split(' ')[1]}</Text>
         </View>
       </View>
 
@@ -330,13 +425,13 @@ const RunDetailScreen = () => {
 
         <View style={styles.statRow}>
           <Text style={styles.statRowLabel}>Average Speed</Text>
-          <Text style={styles.statRowValue}>{run.average_speed.toFixed(1)} km/h</Text>
+          <Text style={styles.statRowValue}>{formatSpeed(run.average_speed, distanceUnit)}</Text>
         </View>
 
         {run.elevation_gain !== undefined && run.elevation_gain !== null && (
           <View style={styles.statRow}>
             <Text style={styles.statRowLabel}>Elevation Gain</Text>
-            <Text style={styles.statRowValue}>{run.elevation_gain.toFixed(0)} m</Text>
+            <Text style={styles.statRowValue}>{formatElevation(run.elevation_gain, distanceUnit)}</Text>
           </View>
         )}
 
@@ -354,6 +449,33 @@ const RunDetailScreen = () => {
           </View>
         )}
       </View>
+
+      {/* Pace Intervals Section */}
+      {run.intervals && run.intervals.length > 0 && (
+        <View style={styles.statsCard}>
+          <Text style={styles.statsCardTitle}>Pace Intervals</Text>
+          <View style={styles.intervalsHeader}>
+            <Text style={[styles.intervalHeaderText, { flex: 1 }]}>#</Text>
+            <Text style={[styles.intervalHeaderText, { flex: 2 }]}>Distance</Text>
+            <Text style={[styles.intervalHeaderText, { flex: 2 }]}>Pace</Text>
+            <Text style={[styles.intervalHeaderText, { flex: 2 }]}>Time</Text>
+          </View>
+          {run.intervals.map((interval, index) => (
+            <View key={index} style={styles.intervalRow}>
+              <Text style={[styles.intervalText, { flex: 1 }]}>{index + 1}</Text>
+              <Text style={[styles.intervalText, { flex: 2 }]}>
+                {formatDistance(interval.distance, distanceUnit)}
+              </Text>
+              <Text style={[styles.intervalText, { flex: 2 }]}>
+                {formatPaceUtil(interval.pace, distanceUnit)}
+              </Text>
+              <Text style={[styles.intervalText, { flex: 2 }]}>
+                {formatDuration(interval.duration)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Action Buttons */}
       <View style={styles.actionButtonsContainer}>
@@ -388,14 +510,11 @@ const RunDetailScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={handleDelete}
-          disabled={deleting}
+          style={styles.actionButton}
+          onPress={() => setShowMoreMenu(true)}
         >
-          <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.deleteButtonText}>
-            {deleting ? '...' : 'Delete'}
-          </Text>
+          <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.primary} />
+          <Text style={styles.actionButtonText}>More</Text>
         </TouchableOpacity>
       </View>
 
@@ -493,6 +612,104 @@ const RunDetailScreen = () => {
                 {sharing ? 'Sharing...' : 'Share Run'}
               </Text>
             </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* More Menu Modal */}
+      <Modal
+        visible={showMoreMenu}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowMoreMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.moreMenuOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMoreMenu(false)}
+        >
+          <View style={styles.moreMenu}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={handleSaveAsRoute}
+            >
+              <Ionicons name="bookmark-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.menuItemText}>Save as Route</Text>
+            </TouchableOpacity>
+
+            <View style={styles.menuDivider} />
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowMoreMenu(false);
+                handleDelete();
+              }}
+            >
+              <Ionicons name="trash-outline" size={20} color={COLORS.danger} />
+              <Text style={[styles.menuItemText, { color: COLORS.danger }]}>
+                Delete Run
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Save Route Modal */}
+      <Modal
+        visible={showSaveModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowSaveModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.saveModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Save as Route</Text>
+              <TouchableOpacity onPress={() => setShowSaveModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Create a reusable route from this run
+            </Text>
+
+            <TextInput
+              style={styles.routeNameInput}
+              placeholder="Enter route name"
+              placeholderTextColor={COLORS.textSecondary}
+              value={routeName}
+              onChangeText={setRouteName}
+              maxLength={100}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButtonCancel}
+                onPress={() => setShowSaveModal(false)}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalButtonSave,
+                  (!routeName.trim() || saving) && styles.modalButtonSaveDisabled,
+                ]}
+                onPress={confirmSaveRoute}
+                disabled={saving || !routeName.trim()}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.modalButtonSaveText}>Save Route</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -737,6 +954,115 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: SPACING.xxl,
+  },
+  // Pace Intervals Styles
+  intervalsHeader: {
+    flexDirection: 'row',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.border,
+    marginBottom: SPACING.xs,
+  },
+  intervalHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+  },
+  intervalRow: {
+    flexDirection: 'row',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  intervalText: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  // More Menu Styles
+  moreMenuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreMenu: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    width: '70%',
+    overflow: 'hidden',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    gap: SPACING.sm,
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  // Save Route Modal Styles
+  saveModalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: SPACING.md,
+    paddingBottom: SPACING.xxl,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.md,
+    textAlign: 'center',
+  },
+  routeNameInput: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: 12,
+    padding: SPACING.md,
+    fontSize: 16,
+    color: COLORS.text,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  modalButtonCancel: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: 12,
+    padding: SPACING.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalButtonCancelText: {
+    fontSize: 16,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  modalButtonSave: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    padding: SPACING.md,
+    alignItems: 'center',
+  },
+  modalButtonSaveDisabled: {
+    opacity: 0.6,
+  },
+  modalButtonSaveText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 

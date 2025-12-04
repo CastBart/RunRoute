@@ -11,12 +11,21 @@ import {
   Platform,
   Image,
   Alert,
+  Modal,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../../constants';
 import { socialService, PostWithDetails, CommentWithUser } from '../../services/socialService';
+import { routeService } from '../../services/routeService';
 import { SocialStackParamList } from '../../types';
+import { usePreferencesStore } from '../../store/preferencesStore';
+import {
+  simplifyPolyline,
+  generateRouteName,
+  convertRunToRoute,
+} from '../../utils/routeConverter';
 
 type PostDetailRouteProp = RouteProp<SocialStackParamList, 'PostDetail'>;
 
@@ -24,6 +33,7 @@ const PostDetailScreen = () => {
   const route = useRoute<PostDetailRouteProp>();
   const navigation = useNavigation();
   const { postId } = route.params;
+  const { distanceUnit } = usePreferencesStore();
 
   const [post, setPost] = useState<PostWithDetails | null>(null);
   const [comments, setComments] = useState<CommentWithUser[]>([]);
@@ -31,6 +41,9 @@ const PostDetailScreen = () => {
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [routeName, setRouteName] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -110,6 +123,102 @@ const PostDetailScreen = () => {
         },
       ]
     );
+  };
+
+  const handleSaveRoute = async () => {
+    if (!post?.run) return;
+
+    // Check for insufficient GPS data
+    if (!post.run.polyline || post.run.polyline.length < 10) {
+      Alert.alert('Error', 'This run has insufficient GPS data to create a route.');
+      return;
+    }
+
+    try {
+      // Check for duplicates
+      const simplifiedPolyline = simplifyPolyline(post.run.polyline, 0.00005);
+      const { isDuplicate, existingRoute } = await routeService.checkForDuplicate(simplifiedPolyline);
+
+      if (isDuplicate) {
+        Alert.alert(
+          'Duplicate Route',
+          `You already have this route saved as "${existingRoute?.name}".`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Generate suggested name
+      const suggestedName = generateRouteName(
+        {
+          distance: post.run.distance,
+          polyline: post.run.polyline,
+          start_time: post.run.start_time,
+        },
+        distanceUnit
+      );
+      setRouteName(suggestedName);
+      setShowSaveModal(true);
+    } catch (error) {
+      console.error('Error checking for duplicates:', error);
+      Alert.alert('Error', 'Failed to check for duplicates.');
+    }
+  };
+
+  const confirmSaveRoute = async () => {
+    if (!post?.run || !routeName.trim()) return;
+
+    setSaving(true);
+
+    try {
+      // Convert run to route with community attribution
+      const routeData = convertRunToRoute(
+        {
+          ...post.run,
+          id: post.run_id,
+          user_id: post.user_id,
+          start_time: post.run.start_time,
+          end_time: '', // Not critical for route conversion
+          average_pace: post.run.average_pace,
+          average_speed: 0, // Not critical
+          created_at: post.created_at,
+          updated_at: post.updated_at,
+        } as any,
+        routeName.trim(),
+        'social_post',
+        true // is community route
+      );
+
+      // Add attribution metadata
+      (routeData as any).original_run_id = post.run_id;
+      (routeData as any).original_user_id = post.user_id;
+
+      // Save with post reference
+      const savedRoute = await routeService.saveRouteFromRun(routeData, post.id);
+
+      setSaving(false);
+      setShowSaveModal(false);
+      setRouteName('');
+
+      Alert.alert(
+        'Route Saved!',
+        `"${routeName}" has been added to your routes.`,
+        [
+          { text: 'OK' },
+          {
+            text: 'View Routes',
+            onPress: () => {
+              // Navigate to Routes tab
+              navigation.navigate('Routes' as any);
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error saving route:', error);
+      setSaving(false);
+      Alert.alert('Error', 'Failed to save route. Please try again.');
+    }
   };
 
   // Format helpers
@@ -245,6 +354,12 @@ const PostDetailScreen = () => {
           </View>
         </View>
 
+        {/* Save Route Button */}
+        <TouchableOpacity style={styles.saveRouteButton} onPress={handleSaveRoute}>
+          <Ionicons name="map-outline" size={20} color={COLORS.primary} />
+          <Text style={styles.saveRouteButtonText}>Save Route</Text>
+        </TouchableOpacity>
+
         {/* Caption */}
         {post.caption && (
           <View style={styles.captionContainer}>
@@ -318,6 +433,69 @@ const PostDetailScreen = () => {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Save Route Modal */}
+      <Modal
+        visible={showSaveModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowSaveModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.saveModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Save Route</Text>
+              <TouchableOpacity onPress={() => setShowSaveModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Attribution Banner */}
+            <View style={styles.attributionBanner}>
+              <Ionicons name="information-circle" size={20} color={COLORS.primary} />
+              <Text style={styles.attributionText}>
+                This route will be attributed to @{post?.user?.name || 'unknown'}
+              </Text>
+            </View>
+
+            <TextInput
+              style={styles.routeNameInput}
+              placeholder="Enter route name"
+              placeholderTextColor={COLORS.textSecondary}
+              value={routeName}
+              onChangeText={setRouteName}
+              maxLength={100}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButtonCancel}
+                onPress={() => setShowSaveModal(false)}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalButtonSave,
+                  (!routeName.trim() || saving) && styles.modalButtonSaveDisabled,
+                ]}
+                onPress={confirmSaveRoute}
+                disabled={saving || !routeName.trim()}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.modalButtonSaveText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -561,6 +739,108 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  // Save Route Button Styles
+  saveRouteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 8,
+    marginHorizontal: SPACING.md,
+    marginVertical: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    gap: SPACING.xs,
+  },
+  saveRouteButtonText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Save Route Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  saveModalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: SPACING.md,
+    paddingBottom: SPACING.xxl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  attributionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundSecondary,
+    padding: SPACING.sm,
+    borderRadius: 8,
+    gap: SPACING.xs,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  attributionText: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  routeNameInput: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: 12,
+    padding: SPACING.md,
+    fontSize: 16,
+    color: COLORS.text,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  modalButtonCancel: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: 12,
+    padding: SPACING.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalButtonCancelText: {
+    fontSize: 16,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  modalButtonSave: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    padding: SPACING.md,
+    alignItems: 'center',
+  },
+  modalButtonSaveDisabled: {
+    opacity: 0.6,
+  },
+  modalButtonSaveText: {
+    fontSize: 16,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
 });

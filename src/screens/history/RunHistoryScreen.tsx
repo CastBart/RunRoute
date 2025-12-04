@@ -15,6 +15,8 @@ import { COLORS, SPACING } from '../../constants';
 import { runService } from '../../services/runService';
 import RunListItem from '../../components/RunListItem';
 import { HistoryStackParamList } from '../../types';
+import { usePreferencesStore } from '../../store/preferencesStore';
+import { formatDistance, getUnitLabel } from '../../utils/unitConversions';
 
 type HistoryNavigationProp = StackNavigationProp<HistoryStackParamList, 'RunHistory'>;
 
@@ -29,6 +31,7 @@ interface RunData {
 
 const RunHistoryScreen = () => {
   const navigation = useNavigation<HistoryNavigationProp>();
+  const { distanceUnit } = usePreferencesStore();
   const [runs, setRuns] = useState<RunData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,8 +101,8 @@ const RunHistoryScreen = () => {
             <Text style={styles.statLabel}>Runs</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statValue}>{totalDistance.toFixed(1)}</Text>
-            <Text style={styles.statLabel}>Total km</Text>
+            <Text style={styles.statValue}>{formatDistance(totalDistance, distanceUnit, 1).split(' ')[0]}</Text>
+            <Text style={styles.statLabel}>Total {getUnitLabel(distanceUnit, true)}</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{formatTotalDuration(totalDuration)}</Text>

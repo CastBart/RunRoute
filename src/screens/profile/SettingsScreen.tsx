@@ -12,13 +12,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING } from '../../constants';
 import { useAuthStore } from '../../store/authStore';
+import { usePreferencesStore } from '../../store/preferencesStore';
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
   const { signOut } = useAuthStore();
+  const { distanceUnit, setDistanceUnit } = usePreferencesStore();
 
-  // Settings state (these would be persisted in a real app)
-  const [useMetric, setUseMetric] = useState(true);
+  // Privacy settings state (not persisted to backend yet)
   const [showOnMap, setShowOnMap] = useState(true);
   const [allowComments, setAllowComments] = useState(true);
   const [publicProfile, setPublicProfile] = useState(true);
@@ -90,8 +91,8 @@ const SettingsScreen = () => {
             {renderSettingRow(
               'Use Metric Units',
               'Display distances in kilometers and pace in min/km',
-              useMetric,
-              setUseMetric
+              distanceUnit === 'km',
+              (value) => setDistanceUnit(value ? 'km' : 'miles')
             )}
           </View>
         </View>

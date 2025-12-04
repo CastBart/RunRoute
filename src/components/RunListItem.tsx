@@ -1,6 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING } from '../constants';
+import { usePreferencesStore } from '../store/preferencesStore';
+import {
+  formatDistance,
+  formatPace as formatPaceUtil,
+} from '../utils/unitConversions';
 
 interface RunListItemProps {
   id: string;
@@ -19,6 +24,8 @@ const RunListItem: React.FC<RunListItemProps> = ({
   startTime,
   onPress,
 }) => {
+  const { distanceUnit } = usePreferencesStore();
+
   // Format duration as mm:ss or hh:mm:ss
   const formatDuration = (seconds: number): string => {
     const hrs = Math.floor(seconds / 3600);
@@ -28,16 +35,6 @@ const RunListItem: React.FC<RunListItemProps> = ({
     if (hrs > 0) {
       return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Format pace as m:ss /km
-  const formatPace = (secondsPerKm: number): string => {
-    if (!secondsPerKm || secondsPerKm === 0 || !isFinite(secondsPerKm)) {
-      return '--:--';
-    }
-    const mins = Math.floor(secondsPerKm / 60);
-    const secs = Math.floor(secondsPerKm % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -76,7 +73,7 @@ const RunListItem: React.FC<RunListItemProps> = ({
     >
       <View style={styles.header}>
         <Text style={styles.dateText}>{formatDate(startTime)}</Text>
-        <Text style={styles.distanceText}>{distance.toFixed(2)} km</Text>
+        <Text style={styles.distanceText}>{formatDistance(distance, distanceUnit)}</Text>
       </View>
 
       <View style={styles.statsRow}>
@@ -87,12 +84,12 @@ const RunListItem: React.FC<RunListItemProps> = ({
 
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>Avg Pace</Text>
-          <Text style={styles.statValue}>{formatPace(averagePace)} /km</Text>
+          <Text style={styles.statValue}>{formatPaceUtil(averagePace, distanceUnit)}</Text>
         </View>
 
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>Distance</Text>
-          <Text style={styles.statValue}>{distance.toFixed(2)} km</Text>
+          <Text style={styles.statValue}>{formatDistance(distance, distanceUnit)}</Text>
         </View>
       </View>
     </TouchableOpacity>

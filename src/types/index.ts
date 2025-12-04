@@ -42,6 +42,44 @@ export interface Route {
   created_at?: string;
 }
 
+// Community Routes Types
+export interface RouteWithAttribution extends Route {
+  is_community_route?: boolean;
+  save_count?: number;
+  original_run_id?: string;
+  original_user_id?: string;
+  source_type?: 'own_run' | 'social_post' | 'manual';
+}
+
+export interface RouteSave {
+  id: string;
+  route_id: string;
+  saved_by_user_id: string;
+  original_run_id?: string;
+  source_post_id?: string;
+  source_type: 'own_run' | 'social_post';
+  created_at: string;
+}
+
+export interface RouteAttributionData {
+  route: Route;
+  originalUser?: {
+    id: string;
+    name: string;
+    avatar_url?: string;
+  };
+  saveCount: number;
+  savedByCurrentUser: boolean;
+}
+
+// Pace Interval Types
+export interface PaceInterval {
+  distance: number; // in kilometers
+  pace: number; // seconds per km
+  duration: number; // in seconds
+  elevationGain?: number; // in meters
+}
+
 // Run Types
 export interface Run {
   id: string;
@@ -56,6 +94,7 @@ export interface Run {
   polyline: Location[];
   elevation_gain?: number;
   calories_burned?: number;
+  intervals?: PaceInterval[]; // NEW: Pace intervals (km or mile splits)
   created_at: string;
   updated_at: string;
 }

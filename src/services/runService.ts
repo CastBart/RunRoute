@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { GPSPoint, TrackingMetrics } from '../store/trackingStore';
+import { PaceInterval } from '../types';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
@@ -14,6 +15,7 @@ export interface SaveRunParams {
   polyline: GPSPoint[]; // GPS trail coordinates
   elevationGain?: number; // meters
   caloriesBurned?: number;
+  intervals?: PaceInterval[]; // NEW: Pace intervals
 }
 
 // Database returns snake_case columns
@@ -71,6 +73,7 @@ class RunService {
           polyline: polylineJson,
           elevation_gain: runData.elevationGain || null,
           calories_burned: runData.caloriesBurned || null,
+          intervals: runData.intervals || null, // NEW: Save intervals
         },
       ])
       .select()

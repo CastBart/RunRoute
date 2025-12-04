@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,12 +19,20 @@ import { COLORS, SPACING, FONT_SIZES, MAP_CONFIG } from '../../constants';
 import { getCurrentLocation } from '../../services/locationService';
 import { useRouteStore } from '../../store/routeStore';
 import { useTrackingStore } from '../../store/trackingStore';
-import { formatDistance, formatDuration } from '../../services/googleMapsService';
+import { formatDistance as formatDistanceService, formatDuration } from '../../services/googleMapsService';
 import { routeService } from '../../services/routeService';
 import Button from '../../components/Button';
+import { usePreferencesStore } from '../../store/preferencesStore';
+import {
+  formatDistance as formatDistanceUtil,
+  convertMilesToKm,
+  convertDistance,
+  getUnitLabel,
+} from '../../utils/unitConversions';
 
 const RoutePlannerScreen = () => {
   const navigation = useNavigation();
+  const { distanceUnit } = usePreferencesStore();
   const mapRef = useRef<MapView>(null);
   const [mapReady, setMapReady] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(
@@ -60,21 +68,6 @@ const RoutePlannerScreen = () => {
     clearError,
   } = useRouteStore();
 
-  // Debug: Log when currentRoute changes
-  useEffect(() => {
-    if (currentRoute) {
-      console.log('🗺️ RoutePlannerScreen: currentRoute updated');
-      console.log('Route ID:', currentRoute.id);
-      console.log('Polyline length:', currentRoute.polyline?.length || 0);
-      if (currentRoute.polyline && currentRoute.polyline.length > 0) {
-        console.log('Sample coordinates:', currentRoute.polyline.slice(0, 3));
-      } else {
-        console.warn('⚠️ currentRoute.polyline is empty or undefined');
-      }
-    } else {
-      console.log('🗺️ RoutePlannerScreen: currentRoute is null');
-    }
-  }, [currentRoute]);
 
   // Get user's current location on mount
   useEffect(() => {
@@ -145,7 +138,7 @@ const RoutePlannerScreen = () => {
   };
 
   // Debounced route regeneration
-  const scheduleRouteRegeneration = () => {
+  const scheduleRouteRegeneration = useCallback(() => {
     setRouteUpdatePending(true);
 
     // Clear existing timer
@@ -163,10 +156,32 @@ const RoutePlannerScreen = () => {
         Alert.alert('Error', 'Failed to update route. Please try again.');
       }
     }, 500);
-  };
+  }, [updateRouteWithWaypoints]);
+
+  // Memoized handler for waypoint drag
+  const handleWaypointDragEnd = useCallback((waypointId: string, coordinate: any) => {
+    updateWaypoint(waypointId, coordinate);
+    scheduleRouteRegeneration();
+  }, [updateWaypoint, scheduleRouteRegeneration]);
+
+  // Memoized handler for start marker drag
+  const handleStartMarkerDrag = useCallback((coordinate: any) => {
+    setStartLocation(coordinate);
+    if (currentRoute && !isLoop) {
+      scheduleRouteRegeneration();
+    }
+  }, [setStartLocation, currentRoute, isLoop, scheduleRouteRegeneration]);
+
+  // Memoized handler for end marker drag
+  const handleEndMarkerDrag = useCallback((coordinate: any) => {
+    setEndLocation(coordinate);
+    if (currentRoute && !isLoop) {
+      scheduleRouteRegeneration();
+    }
+  }, [setEndLocation, currentRoute, isLoop, scheduleRouteRegeneration]);
 
   // Handle delete waypoint
-  const handleDeleteWaypoint = (waypointId: string) => {
+  const handleDeleteWaypoint = useCallback((waypointId: string) => {
     Alert.alert(
       'Remove Waypoint',
       'Remove this waypoint from the route?',
@@ -184,6 +199,37 @@ const RoutePlannerScreen = () => {
         },
       ]
     );
+  }, [removeWaypoint, currentRoute, scheduleRouteRegeneration]);
+
+  // Helper function to determine insertion order based on polyline position
+  const calculateInsertionOrder = (tappedPolylineIndex: number): number => {
+    if (!currentRoute) return waypoints.length;
+
+    // Find polyline index for each existing waypoint
+    const waypointsWithIndices = waypoints.map(wp => {
+      let minDistance = Infinity;
+      let wpPolylineIndex = 0;
+
+      currentRoute.polyline.forEach((point, index) => {
+        const distance = Math.sqrt(
+          Math.pow(point.latitude - wp.latitude, 2) +
+          Math.pow(point.longitude - wp.longitude, 2)
+        );
+        if (distance < minDistance) {
+          minDistance = distance;
+          wpPolylineIndex = index;
+        }
+      });
+
+      return { order: wp.order, polylineIndex: wpPolylineIndex };
+    });
+
+    // Count waypoints that appear before the tapped location
+    const waypointsBefore = waypointsWithIndices.filter(
+      wp => wp.polylineIndex < tappedPolylineIndex
+    ).length;
+
+    return waypointsBefore;
   };
 
   // Handle add waypoint by tapping route
@@ -196,11 +242,12 @@ const RoutePlannerScreen = () => {
 
     const tappedLocation = event.nativeEvent.coordinate;
 
-    // Find nearest polyline point
+    // Find nearest polyline point AND its index
     let minDistance = Infinity;
     let nearestPoint = tappedLocation;
+    let nearestIndex = 0;
 
-    currentRoute.polyline.forEach((point) => {
+    currentRoute.polyline.forEach((point, index) => {
       const distance = Math.sqrt(
         Math.pow(point.latitude - tappedLocation.latitude, 2) +
         Math.pow(point.longitude - tappedLocation.longitude, 2)
@@ -208,12 +255,31 @@ const RoutePlannerScreen = () => {
       if (distance < minDistance) {
         minDistance = distance;
         nearestPoint = point;
+        nearestIndex = index;
       }
     });
 
-    addWaypoint(nearestPoint);
-    Alert.alert('Waypoint Added', 'Route will update in a moment');
-    scheduleRouteRegeneration();
+    // Calculate insertion order based on polyline position
+    const insertionOrder = calculateInsertionOrder(nearestIndex);
+
+    // Show confirmation dialog before adding waypoint
+    Alert.alert(
+      'Add Waypoint',
+      `Add waypoint ${insertionOrder + 1} at this location?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Add',
+          onPress: () => {
+            addWaypoint(nearestPoint, insertionOrder);
+            scheduleRouteRegeneration();
+          },
+        },
+      ]
+    );
   };
 
   // Handle start run with this route
@@ -239,29 +305,27 @@ const RoutePlannerScreen = () => {
 
   // Handle save route for later - opens modal
   const handleSaveRoute = () => {
-    console.log('📝 handleSaveRoute called, currentRoute:', !!currentRoute);
     if (!currentRoute) {
       Alert.alert('No Route', 'Please generate a route first.');
       return;
     }
 
     // Set default name and show modal
-    const defaultName = `${currentRoute.distance.toFixed(1)}km ${currentRoute.is_loop ? 'Loop' : 'Route'}`;
-    console.log('📝 Opening save modal with default name:', defaultName);
+    const unitLabel = getUnitLabel(distanceUnit, true);
+    const distanceValue = convertDistance(currentRoute.distance, distanceUnit).toFixed(1);
+    const defaultName = `${distanceValue}${unitLabel} ${currentRoute.is_loop ? 'Loop' : 'Route'}`;
     setRouteName(defaultName);
     setShowSaveModal(true);
   };
 
   // Confirm save route from modal
   const handleConfirmSave = async () => {
-    console.log('📝 handleConfirmSave called, routeName:', routeName);
     if (!routeName?.trim()) {
       Alert.alert('Error', 'Please enter a route name.');
       return;
     }
 
     if (!currentRoute) {
-      console.error('📝 No currentRoute available');
       return;
     }
 
@@ -273,15 +337,13 @@ const RoutePlannerScreen = () => {
         ...currentRoute,
         name: routeName.trim(),
       };
-      console.log('📝 Saving route:', routeWithName.name);
       await routeService.saveRoute(routeWithName);
-      console.log('📝 Route saved successfully!');
       Alert.alert('Success', 'Route saved successfully!', [
         { text: 'OK', onPress: () => clearRoute() },
       ]);
       setRouteName('');
     } catch (err: any) {
-      console.error('📝 Error saving route:', err);
+      console.error('Error saving route:', err);
       Alert.alert('Error', 'Failed to save route. Please try again.');
     } finally {
       setIsSaving(false);
@@ -290,7 +352,6 @@ const RoutePlannerScreen = () => {
 
   // Cancel save route modal
   const handleCancelSave = () => {
-    console.log('📝 Save cancelled');
     setShowSaveModal(false);
     setRouteName('');
   };
@@ -346,6 +407,8 @@ const RoutePlannerScreen = () => {
             pinColor={COLORS.startMarker}
             title="Start"
             description="Starting point"
+            draggable={!isLoop}
+            onDragEnd={(e) => handleStartMarkerDrag(e.nativeEvent.coordinate)}
           />
         )}
 
@@ -356,6 +419,8 @@ const RoutePlannerScreen = () => {
             pinColor={COLORS.endMarker}
             title="End"
             description="End point"
+            draggable
+            onDragEnd={(e) => handleEndMarkerDrag(e.nativeEvent.coordinate)}
           />
         )}
 
@@ -368,10 +433,7 @@ const RoutePlannerScreen = () => {
               longitude: waypoint.longitude,
             }}
             draggable
-            onDragEnd={(e) => {
-              updateWaypoint(waypoint.id, e.nativeEvent.coordinate);
-              scheduleRouteRegeneration();
-            }}
+            onDragEnd={(e) => handleWaypointDragEnd(waypoint.id, e.nativeEvent.coordinate)}
             anchor={{ x: 0.5, y: 0.5 }}
           >
             <View style={styles.waypointMarker}>
@@ -390,16 +452,13 @@ const RoutePlannerScreen = () => {
 
         {/* Route Polyline */}
         {currentRoute && currentRoute.polyline.length > 0 && (
-          <>
-            {console.log('🔵 Rendering Polyline component with', currentRoute.polyline.length, 'points')}
-            <Polyline
-              coordinates={currentRoute.polyline}
-              strokeColor={COLORS.plannedRoute}
-              strokeWidth={4}
-              tappable={true}
-              onPress={handlePolylinePress}
-            />
-          </>
+          <Polyline
+            coordinates={currentRoute.polyline}
+            strokeColor={COLORS.plannedRoute}
+            strokeWidth={4}
+            tappable={true}
+            onPress={handlePolylinePress}
+          />
         )}
       </MapView>
 
@@ -410,22 +469,27 @@ const RoutePlannerScreen = () => {
           <View style={styles.compactControls}>
             {/* Distance Input */}
             <View style={styles.distanceControl}>
-              <Text style={styles.labelSmall}>Distance (km)</Text>
+              <Text style={styles.labelSmall}>Distance ({getUnitLabel(distanceUnit, true)})</Text>
               <TextInput
                 style={styles.inputCompact}
-                value={targetDistance.toString()}
+                value={convertDistance(targetDistance, distanceUnit).toFixed(1)}
                 onChangeText={(text) => {
                   if (text === '') {
                     setTargetDistance(0);
                     return;
                   }
                   const num = parseFloat(text);
-                  if (!isNaN(num) && num >= 0 && num <= 100) {
-                    setTargetDistance(num);
+                  // Convert input to km for storage (targetDistance is always in km)
+                  const minDistance = distanceUnit === 'km' ? 0.5 : 0.3;
+                  const maxDistance = distanceUnit === 'km' ? 100 : 62;
+
+                  if (!isNaN(num) && num >= 0 && num <= maxDistance) {
+                    const distanceInKm = distanceUnit === 'miles' ? convertMilesToKm(num) : num;
+                    setTargetDistance(distanceInKm);
                   }
                 }}
                 keyboardType="decimal-pad"
-                placeholder="5.0"
+                placeholder={distanceUnit === 'km' ? '5.0' : '3.1'}
               />
             </View>
 
@@ -452,21 +516,12 @@ const RoutePlannerScreen = () => {
           {/* Route Info */}
           {currentRoute && (
             <>
-              {(() => {
-                console.log('📊 Route Summary Data:', {
-                  distance: currentRoute.distance,
-                  estimated_duration: currentRoute.estimated_duration,
-                  formatted_distance: formatDistance(currentRoute.distance),
-                  formatted_duration: formatDuration(currentRoute.estimated_duration || 0),
-                });
-                return null;
-              })()}
               <View style={styles.routeInfo}>
                 <Text style={styles.routeInfoTitle}>Route Summary</Text>
                 <View style={styles.routeInfoRow}>
                   <Text style={styles.routeInfoLabel}>Distance:</Text>
                   <Text style={styles.routeInfoValue}>
-                    {formatDistance(currentRoute.distance)}
+                    {formatDistanceUtil(currentRoute.distance, distanceUnit)}
                   </Text>
                 </View>
                 <View style={styles.routeInfoRow}>

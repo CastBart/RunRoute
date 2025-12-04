@@ -14,6 +14,13 @@ import { useTrackingStore, GPSPoint } from '../../store/trackingStore';
 import { runService } from '../../services/runService';
 import { routeService } from '../../services/routeService';
 import Button from '../../components/Button';
+import { usePreferencesStore } from '../../store/preferencesStore';
+import {
+  formatDistance as formatDistanceUtil,
+  formatPace as formatPaceUtil,
+  convertDistance,
+} from '../../utils/unitConversions';
+import { calculateIntervals } from '../../utils/intervalCalculator';
 
 const RunTrackerScreen = () => {
   const {
@@ -36,6 +43,8 @@ const RunTrackerScreen = () => {
     setError,
     reset,
   } = useTrackingStore();
+
+  const { distanceUnit } = usePreferencesStore();
 
   const [locationSubscription, setLocationSubscription] =
     useState<Location.LocationSubscription | null>(null);
@@ -176,7 +185,18 @@ const RunTrackerScreen = () => {
       const durationHours = metrics.durationSeconds / 3600;
       const averageSpeed = durationHours > 0 ? distanceKm / durationHours : 0;
 
-      // Step 3: Save the run with the route UUID
+      // Step 3: Calculate pace intervals
+      const timestamps = gpsTrail.map(point => point.timestamp);
+      const elevations = gpsTrail.map(point => point.altitude).filter((alt): alt is number => alt !== undefined);
+      const intervals = calculateIntervals(
+        gpsTrail,
+        timestamps,
+        elevations.length === gpsTrail.length ? elevations : undefined,
+        distanceUnit
+      );
+      console.log(`Calculated ${intervals.length} pace intervals`);
+
+      // Step 4: Save the run with the route UUID and intervals
       await runService.saveRun({
         routeId: finalRouteId || undefined,
         startTime: new Date(startedAt || gpsTrail[0].timestamp).toISOString(),
@@ -188,6 +208,7 @@ const RunTrackerScreen = () => {
         polyline: gpsTrail,
         elevationGain: metrics.elevationGainMeters,
         caloriesBurned: metrics.calories,
+        intervals: intervals, // NEW: Include calculated intervals
       });
 
       Alert.alert('Success!', 'Your run has been saved.', [
@@ -366,7 +387,7 @@ const RunTrackerScreen = () => {
               <View style={styles.metricBox}>
                 <Text style={styles.metricLabel}>📏 DISTANCE</Text>
                 <Text style={styles.metricValue}>
-                  {(metrics.distanceMeters / 1000).toFixed(2)} km
+                  {formatDistanceUtil(metrics.distanceMeters / 1000, distanceUnit)}
                 </Text>
               </View>
             </View>
@@ -375,13 +396,13 @@ const RunTrackerScreen = () => {
               <View style={styles.metricBox}>
                 <Text style={styles.metricLabel}>🏃 CURRENT PACE</Text>
                 <Text style={styles.metricValue}>
-                  {formatPace(metrics.currentPaceSecondsPerKm)}/km
+                  {formatPaceUtil(metrics.currentPaceSecondsPerKm, distanceUnit)}
                 </Text>
               </View>
               <View style={styles.metricBox}>
                 <Text style={styles.metricLabel}>⚡ AVG PACE</Text>
                 <Text style={styles.metricValue}>
-                  {formatPace(metrics.averagePaceSecondsPerKm)}/km
+                  {formatPaceUtil(metrics.averagePaceSecondsPerKm, distanceUnit)}
                 </Text>
               </View>
             </View>
@@ -389,7 +410,7 @@ const RunTrackerScreen = () => {
             {targetDistanceMeters && (
               <View style={styles.progressContainer}>
                 <Text style={styles.progressLabel}>
-                  Target: {(targetDistanceMeters / 1000).toFixed(1)} km •{' '}
+                  Target: {formatDistanceUtil(targetDistanceMeters / 1000, distanceUnit, 1)} •{' '}
                   {progressPercentage.toFixed(0)}% Complete
                 </Text>
                 <View style={styles.progressBar}>
