@@ -58,19 +58,49 @@ const RunTrackerScreen = () => {
   // Request location permissions and start tracking
   const handleStartRun = async () => {
     try {
+      // Step 1: Request foreground location permission
+      console.log('Requesting foreground location permission...');
       const { status: foregroundStatus } =
         await Location.requestForegroundPermissionsAsync();
 
+      console.log('Foreground permission status:', foregroundStatus);
+
       if (foregroundStatus !== 'granted') {
         Alert.alert(
-          'Permission Required',
-          'Location permission is needed to track your run.'
+          'Location Permission Required',
+          'RunRoute needs access to your location to track your run. Please grant location permission.'
+        );
+        return;
+      }
+
+      // Step 2: Request background location permission (Android shows 2-step dialog)
+      console.log('Requesting background location permission...');
+      const { status: backgroundStatus } =
+        await Location.requestBackgroundPermissionsAsync();
+
+      console.log('Background permission status:', backgroundStatus);
+
+      if (backgroundStatus !== 'granted') {
+        Alert.alert(
+          'Background Location Permission Required',
+          'RunRoute needs background location access to track your run even when your phone is locked. Please grant "Allow all the time" permission.',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+            {
+              text: 'Try Again',
+              onPress: () => handleStartRun(),
+            },
+          ]
         );
         return;
       }
 
       setGPSStatus('searching');
 
+      // Step 3: Get initial GPS position
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.BestForNavigation,
       });
@@ -86,32 +116,41 @@ const RunTrackerScreen = () => {
 
       startTracking({ startPosition });
 
-      // Start background location tracking (works even when screen is locked)
+      // Step 4: Start background location tracking (works even when screen is locked)
+      console.log('Starting background location tracking...');
       const started = await startBackgroundLocationTracking((newPosition: GPSPoint) => {
         // Update tracking store
         updatePosition(newPosition);
 
-        // Animate map to follow user (only works when app is in foreground)
-        if (mapRef.current) {
-          mapRef.current.animateToRegion({
-            latitude: newPosition.latitude,
-            longitude: newPosition.longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          });
-        }
+        // Map auto-follows user via followsUserLocation prop (line 341)
+        // No manual animation needed - native prop is more efficient
       });
 
       if (started) {
         setGPSStatus('active');
-        console.log('Background location tracking started successfully');
+        console.log('✅ Background location tracking started successfully');
       } else {
-        throw new Error('Failed to start background location tracking');
+        throw new Error('Failed to start background location tracking. Please check your device settings.');
       }
     } catch (err: any) {
-      console.error('Error starting run:', err);
-      setError(err.message || 'Failed to start GPS tracking');
-      Alert.alert('Error', 'Failed to start GPS tracking');
+      console.error('❌ Error starting run:', err);
+      const errorMessage = err.message || 'Unable to start GPS tracking. Please try again.';
+      setError(errorMessage);
+
+      Alert.alert(
+        'GPS Tracking Error',
+        errorMessage,
+        [
+          {
+            text: 'OK',
+            style: 'default',
+          },
+          {
+            text: 'Try Again',
+            onPress: () => handleStartRun(),
+          },
+        ]
+      );
     }
   };
 
@@ -250,6 +289,26 @@ const RunTrackerScreen = () => {
       }
     };
   }, [locationSubscription]);
+
+  // Independent timer for duration display (updates every 1 second)
+  useEffect(() => {
+    if (!isTracking || isPaused || !startedAt) return;
+
+    const timer = setInterval(() => {
+      // Force duration metric update without waiting for GPS
+      // This makes the timer feel smooth and real-time
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+
+      // Only update if duration has actually changed
+      if (elapsed !== metrics.durationSeconds) {
+        // Update just the duration metric without triggering full recalculation
+        const updatedMetrics = { ...metrics, durationSeconds: elapsed };
+        useTrackingStore.setState({ metrics: updatedMetrics });
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isTracking, isPaused, startedAt, metrics]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

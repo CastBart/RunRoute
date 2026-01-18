@@ -72,23 +72,14 @@ export const isBackgroundTaskRegistered = async (): Promise<boolean> => {
 
 /**
  * Start background location tracking
+ * NOTE: Permissions must be granted before calling this function
+ * Caller is responsible for requesting both foreground and background permissions
  */
 export const startBackgroundLocationTracking = async (
   callback: (location: GPSPoint) => void
 ): Promise<boolean> => {
   try {
-    // Check permissions
-    const { status: foregroundStatus } = await Location.getForegroundPermissionsAsync();
-    if (foregroundStatus !== 'granted') {
-      console.error('Foreground location permission not granted');
-      return false;
-    }
-
-    // Request background permissions
-    const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-    if (backgroundStatus !== 'granted') {
-      console.warn('Background location permission not granted, tracking may stop when app is backgrounded');
-    }
+    console.log('[BackgroundLocationService] Starting background location tracking...');
 
     // Register the callback
     locationUpdateCallback = callback;
@@ -96,15 +87,15 @@ export const startBackgroundLocationTracking = async (
     // Check if already registered
     const isRegistered = await isBackgroundTaskRegistered();
     if (isRegistered) {
-      console.log('Background task already registered, stopping first...');
+      console.log('[BackgroundLocationService] Background task already registered, stopping first...');
       await stopBackgroundLocationTracking();
     }
 
     // Start background location updates
     await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
       accuracy: Location.Accuracy.BestForNavigation,
-      timeInterval: 5000, // Update every 5 seconds
-      distanceInterval: 5, // Update every 5 meters
+      timeInterval: 1000, // Update every 1 second (for live feedback)
+      distanceInterval: 2, // Update every 2 meters (captures movement at walking pace)
       foregroundService: {
         notificationTitle: 'RunRoute is tracking your run',
         notificationBody: 'Tap to return to your run',
@@ -114,11 +105,14 @@ export const startBackgroundLocationTracking = async (
       showsBackgroundLocationIndicator: true, // iOS: show blue bar
     });
 
-    console.log('Background location tracking started');
+    console.log('[BackgroundLocationService] ✅ Background location tracking started successfully');
     return true;
-  } catch (error) {
-    console.error('Error starting background location tracking:', error);
-    return false;
+  } catch (error: any) {
+    console.error('[BackgroundLocationService] ❌ Error starting background location tracking:', error);
+    console.error('[BackgroundLocationService] Error details:', error.message);
+
+    // Throw detailed error for better debugging
+    throw new Error(`Failed to start location updates: ${error.message || 'Unknown error'}`);
   }
 };
 

@@ -120,15 +120,20 @@ function calculateMetrics(
   if (totalDistance > 0 && durationSeconds > 0) {
     averagePace = (durationSeconds / totalDistance) * 1000; // seconds per km
 
-    // Current pace based on last 30 seconds of data
-    const recent = gpsTrail.slice(-6); // Last 30 seconds assuming 5s intervals
+    // Current pace based on last 60 seconds of data (more stable reading)
+    const recent = gpsTrail.slice(-60); // Last 60 seconds with 1s GPS intervals
     if (recent.length >= 2) {
       let recentDistance = 0;
+      let recentTime = 0;
       for (let i = 1; i < recent.length; i++) {
         recentDistance += calculateDistance(recent[i - 1], recent[i]);
       }
-      if (recentDistance > 0) {
-        currentPace = (30 / recentDistance) * 1000;
+      // Calculate time span from actual timestamps (more accurate than assuming intervals)
+      if (recent.length > 0) {
+        recentTime = (recent[recent.length - 1].timestamp - recent[0].timestamp) / 1000;
+      }
+      if (recentDistance > 0 && recentTime > 0) {
+        currentPace = (recentTime / recentDistance) * 1000;
       }
     }
   }
