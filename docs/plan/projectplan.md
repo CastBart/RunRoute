@@ -551,9 +551,15 @@ d:\Projects\RunRoute\
 ├── .env.example                    # Environment variables template
 ├── app.json                        # Expo configuration
 ├── package.json                    # Dependencies
-├── projectplan.md                  # This file
-├── rules/
-│   └── claude.md                   # Development workflow rules
+├── CLAUDE.md                       # Claude operating rules
+├── docs/
+│   ├── plan/
+│   │   ├── projectplan.md          # This file
+│   │   └── phases/                 # Phase completion docs
+│   ├── tracking/                   # Backlog and issues
+│   ├── features/                   # Feature documentation
+│   ├── changes/                    # Change logs
+│   └── adr/                        # Architecture decisions
 ├── spec/                           # Project specifications
 │   ├── 1. Product Requirement Document/
 │   ├── 2. Technical Architecture Doc/
@@ -649,9 +655,9 @@ Based on the current state and priorities:
 
 ---
 
-## Development Workflow (Per rules/claude.md)
+## Development Workflow (Per CLAUDE.md)
 
-Following the standard workflow from `rules/claude.md`:
+Following the standard workflow from `CLAUDE.md`:
 
 1. ✅ **Plan** - Read codebase, write plan (THIS DOCUMENT)
 2. ⬜ **Verify** - Review plan with you before proceeding
@@ -722,16 +728,16 @@ Following the standard workflow from `rules/claude.md`:
 
 Detailed summaries for each completed phase can be found in the `phases/` directory:
 
-- [Phase 1: Project Setup & Foundation](phases/Phase1.md)
-- [Phase 2: Authentication System](phases/Phase2.md)
-- [Phase 3: Route Planning](phases/Phase3.md)
-- [Phase 4: Database Schema Setup](phases/Phase4.md)
-- [Phase 5: Live Run Tracking](phases/Phase5.md)
-- [Phase 6: Run History & Analytics](phases/Phase6.md)
-- [Phase 7: Social Features](phases/Phase7.md)
-- [Phase 8: Profile & Settings](phases/Phase8.md)
-- [Phase 9A: Routes Hub & UX Improvements](phases/Phase9A.md)
-- [Phase 9B: UX Review & Visual Polish](phases/Phase9B.md)
+- [Phase 1: Project Setup & Foundation](phases/phase-01-setup.md)
+- [Phase 2: Authentication System](phases/phase-02-auth.md)
+- [Phase 3: Route Planning](phases/phase-03-route-planning.md)
+- [Phase 4: Database Schema Setup](phases/phase-04-database.md)
+- [Phase 5: Live Run Tracking](phases/phase-05-tracking.md)
+- [Phase 6: Run History & Analytics](phases/phase-06-history.md)
+- [Phase 7: Social Features](phases/phase-07-social.md)
+- [Phase 8: Profile & Settings](phases/phase-08-profile.md)
+- [Phase 9A: Routes Hub & UX Improvements](phases/phase-09a-routes-hub.md)
+- [Phase 9B: UX Review & Visual Polish](phases/phase-09b-ux-polish.md)
 
 ---
 

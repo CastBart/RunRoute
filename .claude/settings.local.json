@@ -8,7 +8,9 @@
       "Bash(find:*)",
       "Bash(eas build:list:*)",
       "Bash(eas build:view:*)",
-      "Bash(eas credentials:*)"
+      "Bash(eas credentials:*)",
+      "Bash(git mv:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
