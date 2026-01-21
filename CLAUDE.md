@@ -43,3 +43,10 @@
 - Keep outputs concise: file paths + actions + verification steps
 - Do not implement features that conflict with the plan
 - If a request is out-of-plan, propose a plan update first (or add a task)
+
+## Documentation rule (strict)
+- Expert subagents MUST NOT write change notes.
+- The Lead Engineer is responsible for invoking `/write-change-note`
+  once a feature, fix, or refactor is complete.
+- No meaningful change is considered "done" until a change note exists
+  in /docs/changes/.

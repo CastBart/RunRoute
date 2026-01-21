@@ -10,9 +10,19 @@
       "Bash(eas build:view:*)",
       "Bash(eas credentials:*)",
       "Bash(git mv:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(where:*)",
+      "Bash(bash:*)",
+      "Bash(jq:*)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__get_advisors",
+      "mcp__supabase__execute_sql"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

@@ -1,0 +1,9 @@
+{
+    "chat.mcp.serverSampling": {
+        "RunRoute/.vscode/mcp.json: supabase": {
+            "allowedModels": [
+                "copilot/claude-haiku-4.5"
+            ]
+        }
+    }
+}
