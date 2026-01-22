@@ -156,7 +156,7 @@ class RunService {
    */
   async deleteRun(runId: string): Promise<void> {
     const { error } = await supabase.from('runs').delete().eq('id', runId);
-
+    console.log('Deleting run with ID:', runId);
     if (error) {
       console.error('Error deleting run:', error);
       throw error;

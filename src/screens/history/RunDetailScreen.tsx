@@ -185,9 +185,13 @@ const RunDetailScreen = () => {
   };
 
   const handleDelete = () => {
+    const message = isAlreadyShared
+      ? 'Are you sure you want to delete this run? This will also delete the associated post from your feed. This action cannot be undone.'
+      : 'Are you sure you want to delete this run? This action cannot be undone.';
+
     Alert.alert(
       'Delete Run',
-      'Are you sure you want to delete this run? This action cannot be undone.',
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -197,7 +201,10 @@ const RunDetailScreen = () => {
             setDeleting(true);
             try {
               await runService.deleteRun(runId);
-              Alert.alert('Deleted', 'Run has been deleted.');
+              const successMessage = isAlreadyShared
+                ? 'Run and associated post have been deleted.'
+                : 'Run has been deleted.';
+              Alert.alert('Deleted', successMessage);
               navigation.goBack();
             } catch (err) {
               console.error('Error deleting run:', err);

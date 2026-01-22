@@ -7,6 +7,7 @@ Technical documentation for RunRoute features.
 | Feature | Description | Doc |
 |---------|-------------|-----|
 | Route Generation | Waypoint generation, Google Directions API integration | [route-generation.md](route-generation.md) |
+| Enhanced Start Run UX | GPS pre-acquisition, state machine, countdown timer with haptic feedback | [enhanced-start-run-ux.md](enhanced-start-run-ux.md) |
 
 ## Adding New Feature Docs
 
