@@ -34,6 +34,8 @@ export default {
         "ACCESS_BACKGROUND_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
         "INTERNET"
       ],
       config: {
@@ -48,7 +50,9 @@ export default {
         {
           locationAlwaysAndWhenInUsePermission: "RunRoute needs access to your location to track your runs and show your position on the map.",
           locationAlwaysPermission: "RunRoute needs access to your location in the background to track your runs while the app is not actively in use.",
-          locationWhenInUsePermission: "RunRoute needs access to your location to track your runs and show your position on the map."
+          locationWhenInUsePermission: "RunRoute needs access to your location to track your runs and show your position on the map.",
+          isAndroidForegroundServiceEnabled: true,
+          isAndroidBackgroundLocationEnabled: true
         }
       ]
     ],
