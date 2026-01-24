@@ -146,23 +146,29 @@ const PostCard: React.FC<PostCardProps> = ({
         </View>
       )}
 
-      {/* Run Stats */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{formatDistance(post.run?.distance || 0)}</Text>
-          <Text style={styles.statLabel}>Distance</Text>
+      {/* Run Stats or Run Deleted Notice */}
+      {post.run ? (
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{formatDistance(post.run.distance || 0)}</Text>
+            <Text style={styles.statLabel}>Distance</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{formatDuration(post.run.duration || 0)}</Text>
+            <Text style={styles.statLabel}>Duration</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{formatPace(post.run.average_pace || 0)}</Text>
+            <Text style={styles.statLabel}>Avg Pace</Text>
+          </View>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{formatDuration(post.run?.duration || 0)}</Text>
-          <Text style={styles.statLabel}>Duration</Text>
+      ) : (
+        <View style={styles.runDeletedContainer}>
+          <Text style={styles.runDeletedText}>Run deleted</Text>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{formatPace(post.run?.average_pace || 0)}</Text>
-          <Text style={styles.statLabel}>Avg Pace</Text>
-        </View>
-      </View>
+      )}
 
       {/* Caption */}
       {post.caption && (
@@ -271,6 +277,18 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     backgroundColor: COLORS.border,
+  },
+  runDeletedContainer: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    alignItems: 'center',
+  },
+  runDeletedText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
   },
   captionContainer: {
     paddingHorizontal: SPACING.md,

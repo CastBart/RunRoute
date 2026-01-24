@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 export interface PostWithDetails {
   id: string;
   user_id: string;
-  run_id: string;
+  run_id: string | null; // Can be null if the run was deleted
   caption?: string;
   image_url?: string;
   likes_count: number;
@@ -23,7 +23,7 @@ export interface PostWithDetails {
     average_pace: number;
     polyline: Array<{ latitude: number; longitude: number }>;
     start_time: string;
-  };
+  } | null; // Can be null if the run was deleted
   liked_by_current_user: boolean;
 }
 

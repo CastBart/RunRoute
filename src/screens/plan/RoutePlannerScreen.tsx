@@ -32,7 +32,7 @@ import {
 
 const RoutePlannerScreen = () => {
   const navigation = useNavigation();
-  const { distanceUnit } = usePreferencesStore();
+  const distanceUnit = usePreferencesStore(s => s.distanceUnit);
   const mapRef = useRef<MapView>(null);
   const [mapReady, setMapReady] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(
@@ -45,28 +45,27 @@ const RoutePlannerScreen = () => {
   const [routeUpdatePending, setRouteUpdatePending] = useState(false);
   const regenerationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const {
-    currentRoute,
-    startLocation,
-    endLocation,
-    waypoints,
-    targetDistance,
-    isLoop,
-    isGenerating,
-    error,
-    setStartLocation,
-    setEndLocation,
-    setTargetDistance,
-    setIsLoop,
-    addWaypoint,
-    updateWaypoint,
-    removeWaypoint,
-    generateRoute,
-    regenerateRoute,
-    updateRouteWithWaypoints,
-    clearRoute,
-    clearError,
-  } = useRouteStore();
+  // Narrow Zustand subscriptions to prevent render storms
+  const currentRoute = useRouteStore(s => s.currentRoute);
+  const startLocation = useRouteStore(s => s.startLocation);
+  const endLocation = useRouteStore(s => s.endLocation);
+  const waypoints = useRouteStore(s => s.waypoints);
+  const targetDistance = useRouteStore(s => s.targetDistance);
+  const isLoop = useRouteStore(s => s.isLoop);
+  const isGenerating = useRouteStore(s => s.isGenerating);
+  const error = useRouteStore(s => s.error);
+  const setStartLocation = useRouteStore(s => s.setStartLocation);
+  const setEndLocation = useRouteStore(s => s.setEndLocation);
+  const setTargetDistance = useRouteStore(s => s.setTargetDistance);
+  const setIsLoop = useRouteStore(s => s.setIsLoop);
+  const addWaypoint = useRouteStore(s => s.addWaypoint);
+  const updateWaypoint = useRouteStore(s => s.updateWaypoint);
+  const removeWaypoint = useRouteStore(s => s.removeWaypoint);
+  const generateRoute = useRouteStore(s => s.generateRoute);
+  const regenerateRoute = useRouteStore(s => s.regenerateRoute);
+  const updateRouteWithWaypoints = useRouteStore(s => s.updateRouteWithWaypoints);
+  const clearRoute = useRouteStore(s => s.clearRoute);
+  const clearError = useRouteStore(s => s.clearError);
 
 
   // Get user's current location on mount

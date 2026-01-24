@@ -21,6 +21,7 @@ import { socialService, PostWithDetails, CommentWithUser } from '../../services/
 import { routeService } from '../../services/routeService';
 import { SocialStackParamList } from '../../types';
 import { usePreferencesStore } from '../../store/preferencesStore';
+import { useAuthStore } from '../../store/authStore';
 import {
   simplifyPolyline,
   generateRouteName,
@@ -34,6 +35,7 @@ const PostDetailScreen = () => {
   const navigation = useNavigation();
   const { postId } = route.params;
   const { distanceUnit } = usePreferencesStore();
+  const { user: currentUser } = useAuthStore();
 
   const [post, setPost] = useState<PostWithDetails | null>(null);
   const [comments, setComments] = useState<CommentWithUser[]>([]);
@@ -44,6 +46,10 @@ const PostDetailScreen = () => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [routeName, setRouteName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Check if current user owns this post
+  const isOwnPost = post && currentUser && post.user_id === currentUser.id;
 
   const fetchData = useCallback(async () => {
     try {
@@ -221,6 +227,34 @@ const PostDetailScreen = () => {
     }
   };
 
+  const handleDeletePost = () => {
+    if (!post || !isOwnPost) return;
+
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await socialService.deletePost(post.id);
+              Alert.alert('Deleted', 'Post has been deleted.');
+              navigation.goBack();
+            } catch (err) {
+              console.error('Error deleting post:', err);
+              Alert.alert('Error', 'Failed to delete post. Please try again.');
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Format helpers
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -313,6 +347,19 @@ const PostDetailScreen = () => {
             <Text style={styles.userName}>{post.user?.name || 'Unknown'}</Text>
             <Text style={styles.timestamp}>{formatDate(post.created_at)}</Text>
           </View>
+          {isOwnPost && (
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={handleDeletePost}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <ActivityIndicator size="small" color={COLORS.danger} />
+              ) : (
+                <Ionicons name="trash-outline" size={22} color={COLORS.danger} />
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Map */}
@@ -336,29 +383,38 @@ const PostDetailScreen = () => {
           </View>
         )}
 
-        {/* Run Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{formatDistance(post.run?.distance || 0)}</Text>
-            <Text style={styles.statLabel}>Distance</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{formatDuration(post.run?.duration || 0)}</Text>
-            <Text style={styles.statLabel}>Duration</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{formatPace(post.run?.average_pace || 0)}</Text>
-            <Text style={styles.statLabel}>Avg Pace</Text>
-          </View>
-        </View>
+        {/* Run Stats or Run Deleted Notice */}
+        {post.run ? (
+          <>
+            <View style={styles.statsContainer}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{formatDistance(post.run.distance || 0)}</Text>
+                <Text style={styles.statLabel}>Distance</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{formatDuration(post.run.duration || 0)}</Text>
+                <Text style={styles.statLabel}>Duration</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{formatPace(post.run.average_pace || 0)}</Text>
+                <Text style={styles.statLabel}>Avg Pace</Text>
+              </View>
+            </View>
 
-        {/* Save Route Button */}
-        <TouchableOpacity style={styles.saveRouteButton} onPress={handleSaveRoute}>
-          <Ionicons name="map-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.saveRouteButtonText}>Save Route</Text>
-        </TouchableOpacity>
+            {/* Save Route Button */}
+            <TouchableOpacity style={styles.saveRouteButton} onPress={handleSaveRoute}>
+              <Ionicons name="map-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.saveRouteButtonText}>Save Route</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <View style={styles.runDeletedContainer}>
+            <Ionicons name="information-circle-outline" size={24} color={COLORS.textSecondary} />
+            <Text style={styles.runDeletedText}>Run deleted</Text>
+          </View>
+        )}
 
         {/* Caption */}
         {post.caption && (
@@ -567,6 +623,9 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.md,
     flex: 1,
   },
+  deleteButton: {
+    padding: SPACING.sm,
+  },
   userName: {
     fontSize: 18,
     fontWeight: '600',
@@ -609,6 +668,19 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     backgroundColor: COLORS.border,
+  },
+  runDeletedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.lg,
+    backgroundColor: COLORS.surface,
+    gap: SPACING.sm,
+  },
+  runDeletedText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
   },
   captionContainer: {
     padding: SPACING.md,

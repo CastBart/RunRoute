@@ -17,7 +17,8 @@ import { usePreferencesStore } from '../../store/preferencesStore';
 const SettingsScreen = () => {
   const navigation = useNavigation();
   const { signOut } = useAuthStore();
-  const { distanceUnit, setDistanceUnit } = usePreferencesStore();
+  const distanceUnit = usePreferencesStore(s => s.distanceUnit);
+  const setDistanceUnit = usePreferencesStore(s => s.setDistanceUnit);
 
   // Privacy settings state (not persisted to backend yet)
   const [showOnMap, setShowOnMap] = useState(true);

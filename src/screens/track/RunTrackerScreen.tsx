@@ -46,28 +46,27 @@ import {
 } from '../../services/backgroundLocationService';
 
 const RunTrackerScreen = () => {
-  const {
-    isTracking,
-    isPaused,
-    currentPosition,
-    gpsTrail,
-    metrics,
-    targetDistanceMeters,
-    gpsStatus,
-    plannedRoute,
-    plannedRouteId,
-    startedAt,
-    startTracking,
-    pauseTracking,
-    resumeTracking,
-    stopTracking,
-    updatePosition,
-    setGPSStatus,
-    setError,
-    reset,
-  } = useTrackingStore();
+  // Narrow Zustand subscriptions to prevent render storms
+  const isTracking = useTrackingStore(s => s.isTracking);
+  const isPaused = useTrackingStore(s => s.isPaused);
+  const currentPosition = useTrackingStore(s => s.currentPosition);
+  const gpsTrail = useTrackingStore(s => s.gpsTrail);
+  const metrics = useTrackingStore(s => s.metrics);
+  const targetDistanceMeters = useTrackingStore(s => s.targetDistanceMeters);
+  const gpsStatus = useTrackingStore(s => s.gpsStatus);
+  const plannedRoute = useTrackingStore(s => s.plannedRoute);
+  const plannedRouteId = useTrackingStore(s => s.plannedRouteId);
+  const startedAt = useTrackingStore(s => s.startedAt);
+  const startTracking = useTrackingStore(s => s.startTracking);
+  const pauseTracking = useTrackingStore(s => s.pauseTracking);
+  const resumeTracking = useTrackingStore(s => s.resumeTracking);
+  const stopTracking = useTrackingStore(s => s.stopTracking);
+  const updatePosition = useTrackingStore(s => s.updatePosition);
+  const setGPSStatus = useTrackingStore(s => s.setGPSStatus);
+  const setError = useTrackingStore(s => s.setError);
+  const reset = useTrackingStore(s => s.reset);
 
-  const { distanceUnit } = usePreferencesStore();
+  const distanceUnit = usePreferencesStore(s => s.distanceUnit);
 
   const [locationSubscription, setLocationSubscription] =
     useState<Location.LocationSubscription | null>(null);
