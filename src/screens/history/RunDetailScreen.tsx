@@ -563,7 +563,7 @@ const RunDetailScreen = () => {
                         })}
                       </Text>
                       <Text style={styles.runItemStats}>
-                        {item.distance.toFixed(2)} km • {formatDuration(item.duration)}
+                        {formatDistance(item.distance, distanceUnit)} • {formatDuration(item.duration)}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
@@ -596,7 +596,7 @@ const RunDetailScreen = () => {
 
             <View style={styles.sharePreview}>
               <Text style={styles.sharePreviewText}>
-                {run?.distance.toFixed(2)} km • {formatDuration(run?.duration || 0)}
+                {formatDistance(run?.distance || 0, distanceUnit)} • {formatDuration(run?.duration || 0)}
               </Text>
             </View>
 

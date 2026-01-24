@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { User } from '../types';
+import { User, PrivacySettings } from '../types';
 
 export interface UserStats {
   totalRuns: number;
@@ -129,6 +129,75 @@ class ProfileService {
     }
 
     return data || [];
+  }
+
+  /**
+   * Get privacy settings for a user
+   */
+  async getPrivacySettings(userId: string): Promise<{ data: PrivacySettings | null; error: string | null }> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('show_on_map, allow_comments, public_profile')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching privacy settings:', error);
+      return { data: null, error: error.message };
+    }
+
+    return {
+      data: {
+        show_on_map: data.show_on_map ?? true,
+        allow_comments: data.allow_comments ?? true,
+        public_profile: data.public_profile ?? true,
+      },
+      error: null,
+    };
+  }
+
+  /**
+   * Update privacy settings for a user
+   */
+  async updatePrivacySettings(
+    userId: string,
+    settings: Partial<PrivacySettings>
+  ): Promise<{ data: PrivacySettings | null; error: string | null }> {
+    const updatePayload: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    // Only include fields that are explicitly provided
+    if (settings.show_on_map !== undefined) {
+      updatePayload.show_on_map = settings.show_on_map;
+    }
+    if (settings.allow_comments !== undefined) {
+      updatePayload.allow_comments = settings.allow_comments;
+    }
+    if (settings.public_profile !== undefined) {
+      updatePayload.public_profile = settings.public_profile;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updatePayload)
+      .eq('id', userId)
+      .select('show_on_map, allow_comments, public_profile')
+      .single();
+
+    if (error) {
+      console.error('Error updating privacy settings:', error);
+      return { data: null, error: error.message };
+    }
+
+    return {
+      data: {
+        show_on_map: data.show_on_map ?? true,
+        allow_comments: data.allow_comments ?? true,
+        public_profile: data.public_profile ?? true,
+      },
+      error: null,
+    };
   }
 }
 

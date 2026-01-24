@@ -13,11 +13,14 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { COLORS, SPACING } from '../../constants';
 import { routeService } from '../../services/routeService';
 import { Route, RoutesStackParamList } from '../../types';
+import { usePreferencesStore } from '../../store/preferencesStore';
+import { formatDistance as formatDistanceUtil } from '../../utils/unitConversions';
 
 type SavedRoutesNavigationProp = StackNavigationProp<RoutesStackParamList, 'SavedRoutes'>;
 
 const SavedRoutesScreen = () => {
   const navigation = useNavigation<SavedRoutesNavigationProp>();
+  const { distanceUnit } = usePreferencesStore();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,7 +64,7 @@ const SavedRoutesScreen = () => {
   };
 
   const formatDistance = (km: number): string => {
-    return km.toFixed(2) + ' km';
+    return formatDistanceUtil(km, distanceUnit);
   };
 
   const formatDuration = (seconds: number): string => {

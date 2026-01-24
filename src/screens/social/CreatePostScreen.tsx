@@ -17,6 +17,11 @@ import { COLORS, SPACING } from '../../constants';
 import { socialService } from '../../services/socialService';
 import { runService } from '../../services/runService';
 import { Run } from '../../types';
+import { usePreferencesStore } from '../../store/preferencesStore';
+import {
+  formatDistance as formatDistanceUtil,
+  formatPace as formatPaceUtil,
+} from '../../utils/unitConversions';
 
 interface RunData {
   id: string;
@@ -29,6 +34,7 @@ interface RunData {
 
 const CreatePostScreen = () => {
   const navigation = useNavigation();
+  const { distanceUnit } = usePreferencesStore();
   const [runs, setRuns] = useState<RunData[]>([]);
   const [selectedRun, setSelectedRun] = useState<RunData | null>(null);
   const [caption, setCaption] = useState('');
@@ -108,7 +114,7 @@ const CreatePostScreen = () => {
     });
   };
 
-  const formatDistance = (km: number): string => km.toFixed(2) + ' km';
+  const formatDistance = (km: number): string => formatDistanceUtil(km, distanceUnit);
 
   const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -120,11 +126,7 @@ const CreatePostScreen = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatPace = (secondsPerKm: number): string => {
-    const mins = Math.floor(secondsPerKm / 60);
-    const secs = Math.round(secondsPerKm % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')} /km`;
-  };
+  const formatPace = (secondsPerKm: number): string => formatPaceUtil(secondsPerKm, distanceUnit);
 
   const getMapRegion = (polyline: Array<{ latitude: number; longitude: number }>) => {
     if (polyline.length === 0) {

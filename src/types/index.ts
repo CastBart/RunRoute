@@ -6,6 +6,17 @@ export interface User {
   avatar_url?: string;
   created_at: string;
   updated_at: string;
+  // Privacy settings
+  show_on_map?: boolean;
+  allow_comments?: boolean;
+  public_profile?: boolean;
+}
+
+// Privacy settings type for updates
+export interface PrivacySettings {
+  show_on_map: boolean;
+  allow_comments: boolean;
+  public_profile: boolean;
 }
 
 // Location Types

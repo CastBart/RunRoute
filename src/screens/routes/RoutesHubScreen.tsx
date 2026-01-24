@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
-    padding: SPACING.lg,
+    padding: SPACING.sm,
     marginBottom: SPACING.md,
     flexDirection: 'row',
     alignItems: 'center',

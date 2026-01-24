@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,10 @@ import {
   generateRouteName,
   convertRunToRoute,
 } from '../../utils/routeConverter';
+import {
+  formatDistance as formatDistanceUtil,
+  formatPace as formatPaceUtil,
+} from '../../utils/unitConversions';
 
 type PostDetailRouteProp = RouteProp<SocialStackParamList, 'PostDetail'>;
 
@@ -267,7 +271,7 @@ const PostDetailScreen = () => {
     });
   };
 
-  const formatDistance = (km: number): string => km.toFixed(2) + ' km';
+  const formatDistance = (km: number): string => formatDistanceUtil(km, distanceUnit);
 
   const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -279,19 +283,25 @@ const PostDetailScreen = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatPace = (secondsPerKm: number): string => {
-    const mins = Math.floor(secondsPerKm / 60);
-    const secs = Math.round(secondsPerKm % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')} /km`;
-  };
+  const formatPace = (secondsPerKm: number): string => formatPaceUtil(secondsPerKm, distanceUnit);
 
-  const getMapRegion = () => {
+  // Memoize simplified polyline for better map rendering performance
+  const simplifiedPolyline = useMemo(() => {
     const polyline = post?.run?.polyline || [];
-    if (polyline.length === 0) {
+    if (polyline.length === 0) return [];
+
+    // Use moderate simplification (0.0001 km = 10cm tolerance) for detail view
+    // Less aggressive than feed to preserve detail while still improving performance
+    return simplifyPolyline(polyline, 0.0001);
+  }, [post?.run?.polyline]);
+
+  // Memoize map region calculation
+  const mapRegion = useMemo(() => {
+    if (simplifiedPolyline.length === 0) {
       return { latitude: 0, longitude: 0, latitudeDelta: 0.01, longitudeDelta: 0.01 };
     }
-    const lats = polyline.map((p) => p.latitude);
-    const lngs = polyline.map((p) => p.longitude);
+    const lats = simplifiedPolyline.map((p) => p.latitude);
+    const lngs = simplifiedPolyline.map((p) => p.longitude);
     const minLat = Math.min(...lats);
     const maxLat = Math.max(...lats);
     const minLng = Math.min(...lngs);
@@ -302,7 +312,7 @@ const PostDetailScreen = () => {
       latitudeDelta: Math.max((maxLat - minLat) * 1.4, 0.005),
       longitudeDelta: Math.max((maxLng - minLng) * 1.4, 0.005),
     };
-  };
+  }, [simplifiedPolyline]);
 
   if (loading) {
     return (
@@ -322,8 +332,6 @@ const PostDetailScreen = () => {
       </View>
     );
   }
-
-  const polylineCoords = post.run?.polyline || [];
 
   return (
     <KeyboardAvoidingView
@@ -363,21 +371,31 @@ const PostDetailScreen = () => {
         </View>
 
         {/* Map */}
-        {polylineCoords.length > 0 && (
+        {simplifiedPolyline.length > 0 && (
           <View style={styles.mapContainer}>
             <MapView
               provider={PROVIDER_GOOGLE}
               style={styles.map}
-              region={getMapRegion()}
+              initialRegion={mapRegion}
               scrollEnabled={false}
               zoomEnabled={false}
             >
-              <Polyline coordinates={polylineCoords} strokeColor={COLORS.primary} strokeWidth={4} />
-              <Marker coordinate={polylineCoords[0]} pinColor="green" title="Start" />
+              <Polyline
+                coordinates={simplifiedPolyline}
+                strokeColor={COLORS.primary}
+                strokeWidth={4}
+              />
               <Marker
-                coordinate={polylineCoords[polylineCoords.length - 1]}
+                coordinate={simplifiedPolyline[0]}
+                pinColor="green"
+                title="Start"
+                tracksViewChanges={false}
+              />
+              <Marker
+                coordinate={simplifiedPolyline[simplifiedPolyline.length - 1]}
                 pinColor="red"
                 title="Finish"
+                tracksViewChanges={false}
               />
             </MapView>
           </View>

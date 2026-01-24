@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,23 +7,94 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING } from '../../constants';
 import { useAuthStore } from '../../store/authStore';
 import { usePreferencesStore } from '../../store/preferencesStore';
+import { profileService } from '../../services/profileService';
+import { PrivacySettings } from '../../types';
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
-  const { signOut } = useAuthStore();
+  const { user, signOut } = useAuthStore();
   const distanceUnit = usePreferencesStore(s => s.distanceUnit);
   const setDistanceUnit = usePreferencesStore(s => s.setDistanceUnit);
 
-  // Privacy settings state (not persisted to backend yet)
-  const [showOnMap, setShowOnMap] = useState(true);
-  const [allowComments, setAllowComments] = useState(true);
-  const [publicProfile, setPublicProfile] = useState(true);
+  // Privacy settings from store (local cache)
+  const showOnMap = usePreferencesStore(s => s.showOnMap);
+  const allowComments = usePreferencesStore(s => s.allowComments);
+  const publicProfile = usePreferencesStore(s => s.publicProfile);
+  const setPrivacySettings = usePreferencesStore(s => s.setPrivacySettings);
+  const privacySettingsLoaded = usePreferencesStore(s => s.privacySettingsLoaded);
+  const setPrivacySettingsLoaded = usePreferencesStore(s => s.setPrivacySettingsLoaded);
+
+  // Loading states
+  const [isLoadingPrivacy, setIsLoadingPrivacy] = useState(false);
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
+
+  // Load privacy settings from backend on mount
+  useEffect(() => {
+    const loadPrivacySettings = async () => {
+      if (!user?.id || privacySettingsLoaded) return;
+
+      setIsLoadingPrivacy(true);
+      const { data, error } = await profileService.getPrivacySettings(user.id);
+
+      if (data && !error) {
+        setPrivacySettings(data);
+        setPrivacySettingsLoaded(true);
+      }
+      setIsLoadingPrivacy(false);
+    };
+
+    loadPrivacySettings();
+  }, [user?.id, privacySettingsLoaded, setPrivacySettings, setPrivacySettingsLoaded]);
+
+  /**
+   * Update a single privacy setting - syncs to both local store and backend
+   */
+  const updatePrivacySetting = useCallback(
+    async (key: keyof PrivacySettings, value: boolean) => {
+      if (!user?.id) return;
+
+      // Optimistic update to local store
+      setPrivacySettings({ [key]: value });
+      setIsSavingPrivacy(true);
+
+      // Sync to backend
+      const { error } = await profileService.updatePrivacySettings(user.id, {
+        [key]: value,
+      });
+
+      setIsSavingPrivacy(false);
+
+      if (error) {
+        // Revert on failure
+        setPrivacySettings({ [key]: !value });
+        Alert.alert(
+          'Save Failed',
+          'Could not save privacy setting. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    },
+    [user?.id, setPrivacySettings]
+  );
+
+  const handleShowOnMapChange = (value: boolean) => {
+    updatePrivacySetting('show_on_map', value);
+  };
+
+  const handleAllowCommentsChange = (value: boolean) => {
+    updatePrivacySetting('allow_comments', value);
+  };
+
+  const handlePublicProfileChange = (value: boolean) => {
+    updatePrivacySetting('public_profile', value);
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -66,9 +137,10 @@ const SettingsScreen = () => {
     title: string,
     description: string,
     value: boolean,
-    onValueChange: (value: boolean) => void
+    onValueChange: (value: boolean) => void,
+    disabled: boolean = false
   ) => (
-    <View style={styles.settingRow}>
+    <View style={[styles.settingRow, disabled && styles.settingRowDisabled]}>
       <View style={styles.settingInfo}>
         <Text style={styles.settingTitle}>{title}</Text>
         <Text style={styles.settingDescription}>{description}</Text>
@@ -78,6 +150,7 @@ const SettingsScreen = () => {
         onValueChange={onValueChange}
         trackColor={{ false: COLORS.border, true: COLORS.primary }}
         thumbColor="#FFFFFF"
+        disabled={disabled}
       />
     </View>
   );
@@ -93,7 +166,8 @@ const SettingsScreen = () => {
               'Use Metric Units',
               'Display distances in kilometers and pace in min/km',
               distanceUnit === 'km',
-              (value) => setDistanceUnit(value ? 'km' : 'miles')
+              (value) => setDistanceUnit(value ? 'km' : 'miles'),
+              false
             )}
           </View>
         </View>
@@ -102,23 +176,35 @@ const SettingsScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Privacy</Text>
           <View style={styles.sectionContent}>
-            {renderSettingRow(
-              'Public Profile',
-              'Allow others to see your profile and runs',
-              publicProfile,
-              setPublicProfile
-            )}
-            {renderSettingRow(
-              'Show on Map',
-              'Display your runs on public maps',
-              showOnMap,
-              setShowOnMap
-            )}
-            {renderSettingRow(
-              'Allow Comments',
-              'Let others comment on your shared runs',
-              allowComments,
-              setAllowComments
+            {isLoadingPrivacy ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+                <Text style={styles.loadingText}>Loading privacy settings...</Text>
+              </View>
+            ) : (
+              <>
+                {renderSettingRow(
+                  'Public Profile',
+                  'Allow others to see your profile and runs',
+                  publicProfile,
+                  handlePublicProfileChange,
+                  isSavingPrivacy
+                )}
+                {renderSettingRow(
+                  'Show on Map',
+                  'Display your runs on public maps',
+                  showOnMap,
+                  handleShowOnMapChange,
+                  isSavingPrivacy
+                )}
+                {renderSettingRow(
+                  'Allow Comments',
+                  'Let others comment on your shared runs',
+                  allowComments,
+                  handleAllowCommentsChange,
+                  isSavingPrivacy
+                )}
+              </>
             )}
           </View>
         </View>
@@ -193,6 +279,20 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  settingRowDisabled: {
+    opacity: 0.6,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.lg,
+  },
+  loadingText: {
+    marginLeft: SPACING.sm,
+    fontSize: 14,
+    color: COLORS.textSecondary,
   },
   settingInfo: {
     flex: 1,

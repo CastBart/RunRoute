@@ -16,6 +16,13 @@ import { useAuthStore } from '../../store/authStore';
 import { profileService, UserStats } from '../../services/profileService';
 import { socialService } from '../../services/socialService';
 import { ProfileStackParamList } from '../../types';
+import { usePreferencesStore } from '../../store/preferencesStore';
+import {
+  formatDistance as formatDistanceUtil,
+  formatPace as formatPaceUtil,
+  getUnitLabel,
+  convertDistance,
+} from '../../utils/unitConversions';
 
 type ProfileNavigationProp = StackNavigationProp<ProfileStackParamList, 'UserProfile'>;
 
@@ -27,6 +34,7 @@ interface FollowCounts {
 const ProfileScreen = () => {
   const navigation = useNavigation<ProfileNavigationProp>();
   const { user, signOut } = useAuthStore();
+  const { distanceUnit } = usePreferencesStore();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [followCounts, setFollowCounts] = useState<FollowCounts>({ followers_count: 0, following_count: 0 });
   const [loading, setLoading] = useState(true);
@@ -84,10 +92,11 @@ const ProfileScreen = () => {
 
   // Format helpers
   const formatDistance = (km: number): string => {
-    if (km >= 1000) {
-      return (km / 1000).toFixed(1) + 'k';
+    const converted = convertDistance(km, distanceUnit);
+    if (converted >= 1000) {
+      return (converted / 1000).toFixed(1) + 'k';
     }
-    return km.toFixed(1);
+    return converted.toFixed(1);
   };
 
   const formatDuration = (seconds: number): string => {
@@ -101,9 +110,7 @@ const ProfileScreen = () => {
 
   const formatPace = (secondsPerKm: number): string => {
     if (secondsPerKm === 0) return '--:--';
-    const mins = Math.floor(secondsPerKm / 60);
-    const secs = Math.round(secondsPerKm % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return formatPaceUtil(secondsPerKm, distanceUnit);
   };
 
   if (loading) {
@@ -201,7 +208,7 @@ const ProfileScreen = () => {
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{formatDistance(stats?.totalDistance || 0)}</Text>
-            <Text style={styles.statLabel}>Total km</Text>
+            <Text style={styles.statLabel}>Total {getUnitLabel(distanceUnit)}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{formatDuration(stats?.totalDuration || 0)}</Text>
@@ -219,12 +226,12 @@ const ProfileScreen = () => {
             <Text style={styles.recordsTitle}>Personal Records</Text>
             <View style={styles.recordRow}>
               <Text style={styles.recordLabel}>Longest Run</Text>
-              <Text style={styles.recordValue}>{stats?.longestRun.toFixed(2)} km</Text>
+              <Text style={styles.recordValue}>{formatDistanceUtil(stats?.longestRun || 0, distanceUnit)}</Text>
             </View>
             {(stats?.fastestPace || 0) > 0 && (
               <View style={styles.recordRow}>
                 <Text style={styles.recordLabel}>Fastest Pace</Text>
-                <Text style={styles.recordValue}>{formatPace(stats?.fastestPace || 0)} /km</Text>
+                <Text style={styles.recordValue}>{formatPace(stats?.fastestPace || 0)}</Text>
               </View>
             )}
           </View>

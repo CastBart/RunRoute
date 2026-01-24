@@ -15,6 +15,8 @@ import { routeService } from '../../services/routeService';
 import { useTrackingStore } from '../../store/trackingStore';
 import { Route, RoutesStackParamList } from '../../types';
 import Button from '../../components/Button';
+import { usePreferencesStore } from '../../store/preferencesStore';
+import { formatDistance as formatDistanceUtil } from '../../utils/unitConversions';
 
 type RouteDetailRouteProp = RouteProp<RoutesStackParamList, 'RouteDetail'>;
 type RouteDetailNavigationProp = StackNavigationProp<RoutesStackParamList, 'RouteDetail'>;
@@ -24,6 +26,7 @@ const RouteDetailScreen = () => {
   const route = useRoute<RouteDetailRouteProp>();
   const { routeId } = route.params;
   const mapRef = useRef<MapView>(null);
+  const { distanceUnit } = usePreferencesStore();
 
   const [routeData, setRouteData] = useState<Route | null>(null);
   const [loading, setLoading] = useState(true);
@@ -104,7 +107,7 @@ const RouteDetailScreen = () => {
   };
 
   const formatDistance = (km: number): string => {
-    return km.toFixed(2) + ' km';
+    return formatDistanceUtil(km, distanceUnit);
   };
 
   const formatDuration = (seconds: number): string => {
