@@ -1,10 +1,9 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import RootNavigator from './src/navigation/RootNavigator';
-import { usePreferencesStore } from './src/store/preferencesStore';
 import { registerBackgroundLocationTask } from './src/services/backgroundLocationService';
 
 // Register background location task BEFORE the App component
@@ -21,14 +20,7 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
-  // Load user preferences on app startup
-  useEffect(() => {
-    const loadPreferences = async () => {
-      await usePreferencesStore.getState().loadPreferences();
-    };
-    loadPreferences();
-  }, []);
-
+  // Zustand persist middleware now auto-loads preferences from AsyncStorage
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
